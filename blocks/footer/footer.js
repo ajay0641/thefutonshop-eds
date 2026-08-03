@@ -10,6 +10,217 @@ import createModal from '../modal/modal.js';
 import { getMetadata } from '../../scripts/aem.js';
 import { loadFragment } from '../fragment/fragment.js';
 
+// Base URL for footer media assets on the source CDN. The fragment references
+// images by relative path (images/<file>) so it stays portable for authoring;
+// at render time we resolve them to their hosted location.
+const MEDIA_BASE = 'https://www.thefutonshop.com/media/wysiwyg/';
+const MEDIA_OVERRIDES = {
+  'newtfs-24-logo.png': `${MEDIA_BASE}homepagenew/newtfs-24-logo.png`,
+};
+
+// Newsletter subscribe endpoint (source parity).
+const NEWSLETTER_ACTION = 'https://www.thefutonshop.com/newsletter/subscriber/new/';
+
+/**
+ * Resolves a relative fragment image path to its hosted source URL.
+ * @param {string} src The image src as authored (e.g. images/facebook-footer.webp)
+ * @returns {string} Absolute URL to the hosted asset
+ */
+function resolveMediaSrc(src) {
+  const file = (src || '').split('/').pop();
+  if (!file) return src;
+  return MEDIA_OVERRIDES[file] || `${MEDIA_BASE}${file}`;
+}
+
+/**
+ * Rewrites all relative fragment image sources to their hosted URLs.
+ * @param {Element} scope The footer root element
+ */
+function resolveImages(scope) {
+  scope.querySelectorAll('img').forEach((img) => {
+    const src = img.getAttribute('src') || '';
+    if (src.startsWith('images/') || src.includes('/images/')) {
+      img.src = resolveMediaSrc(src);
+      img.loading = 'lazy';
+    }
+  });
+}
+
+/**
+ * Groups a flat list of sibling nodes into column wrappers, starting a new
+ * column each time the predicate matches a node.
+ * @param {Element} wrapper The content wrapper holding the flat nodes
+ * @param {(node: Element) => boolean} isColumnStart Predicate marking a new column
+ * @param {string} colClass Class applied to each generated column wrapper
+ */
+function groupIntoColumns(wrapper, isColumnStart, colClass) {
+  const nodes = [...wrapper.children];
+  const columns = [];
+  let current = null;
+  nodes.forEach((node) => {
+    if (isColumnStart(node) || !current) {
+      current = document.createElement('div');
+      current.className = colClass;
+      columns.push(current);
+    }
+    current.append(node);
+  });
+  wrapper.append(...columns);
+}
+
+/**
+ * Builds the newsletter subscribe form and appends it to the given container.
+ * Controls are created here (not in the fragment) so the fragment stays portable.
+ * @param {Element} container The newsletter section content wrapper
+ */
+function buildNewsletterForm(container) {
+  const form = document.createElement('form');
+  form.className = 'footer-newsletter-form';
+  form.setAttribute('novalidate', '');
+
+  const field = document.createElement('div');
+  field.className = 'footer-newsletter-field';
+
+  const label = document.createElement('label');
+  label.className = 'footer-newsletter-label';
+  label.setAttribute('for', 'footer-newsletter-email');
+  label.textContent = 'Newsletter';
+
+  const input = document.createElement('input');
+  input.type = 'email';
+  input.id = 'footer-newsletter-email';
+  input.name = 'email';
+  input.required = true;
+  input.placeholder = 'Enter your email address...';
+  input.setAttribute('aria-label', 'Enter your email address');
+
+  const button = document.createElement('button');
+  button.type = 'submit';
+  button.className = 'footer-newsletter-submit';
+  button.textContent = 'Subscribe';
+
+  field.append(label, input, button);
+  form.append(field);
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!input.value || !input.checkValidity()) {
+      input.reportValidity();
+      return;
+    }
+    // Submit to the source newsletter endpoint (parity with source site).
+    const submit = document.createElement('form');
+    submit.action = NEWSLETTER_ACTION;
+    submit.method = 'post';
+    submit.target = '_blank';
+    const hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.name = 'email';
+    hidden.value = input.value;
+    submit.append(hidden);
+    document.body.append(submit);
+    submit.submit();
+    submit.remove();
+    input.value = '';
+  });
+
+  container.append(form);
+}
+
+/**
+ * Decorates the footer fragment into the four content bands, builds the
+ * newsletter form, groups service and link columns, and resolves media.
+ * @param {Element} footer The footer root containing the appended fragment
+ */
+function decorateFooterContent(footer) {
+  resolveImages(footer);
+
+  const sections = [...footer.querySelectorAll(':scope > .section')];
+  const [newsletter, service, links, bottom] = sections;
+
+  if (newsletter) {
+    newsletter.classList.add('footer-newsletter');
+    const wrapper = newsletter.querySelector('.default-content-wrapper') || newsletter;
+    buildNewsletterForm(wrapper);
+  }
+
+  if (service) {
+    service.classList.add('footer-service');
+    const wrapper = service.querySelector('.default-content-wrapper') || service;
+    // Each service column begins with an image (icon).
+    groupIntoColumns(
+      wrapper,
+      (node) => node.querySelector && node.querySelector('img'),
+      'footer-service-col',
+    );
+    // Restructure each column into an icon cell + body cell so the icon sits
+    // left of the heading, with description and CTA button below.
+    wrapper.querySelectorAll('.footer-service-col').forEach((col) => {
+      const iconP = col.querySelector('p:has(img), p > img')?.closest('p') || col.querySelector('p');
+      const iconImg = col.querySelector('img');
+      if (iconImg) {
+        iconImg.classList.add('footer-service-icon');
+        const iconCell = document.createElement('div');
+        iconCell.className = 'footer-service-icon-wrap';
+        iconCell.append(iconImg);
+        const body = document.createElement('div');
+        body.className = 'footer-service-body';
+        // Move all remaining nodes (except the now-empty icon paragraph) into body.
+        [...col.children].forEach((node) => {
+          if (node === iconP) return;
+          body.append(node);
+        });
+        if (iconP && iconP.parentElement === col) iconP.remove();
+        col.append(iconCell, body);
+        // Tag the last link as the CTA button.
+        const ctaLinks = body.querySelectorAll('a');
+        const cta = ctaLinks[ctaLinks.length - 1];
+        if (cta) cta.classList.add('footer-service-cta');
+      }
+    });
+  }
+
+  if (links) {
+    links.classList.add('footer-links');
+    const wrapper = links.querySelector('.default-content-wrapper') || links;
+    // Each link column begins with a heading.
+    groupIntoColumns(
+      wrapper,
+      (node) => /^H[2-4]$/.test(node.tagName),
+      'footer-link-col',
+    );
+    // Tag the social icon list and the certification ("We love organic") block
+    // inside the final (Follow Us) column.
+    const lastCol = wrapper.querySelector('.footer-link-col:last-child');
+    if (lastCol) {
+      const lists = lastCol.querySelectorAll('ul');
+      if (lists[0]) lists[0].classList.add('footer-social');
+      if (lists[1]) lists[1].classList.add('footer-certifications');
+    }
+  }
+
+  if (bottom) {
+    bottom.classList.add('footer-bottom');
+  }
+
+  // Open external and social links in a new tab.
+  footer.querySelectorAll('a[href^="http"]').forEach((a) => {
+    try {
+      const url = new URL(a.href);
+      if (url.hostname !== window.location.hostname
+        && !url.hostname.endsWith('thefutonshop.com')) {
+        a.target = '_blank';
+        a.rel = 'noopener';
+      }
+    } catch (_) { /* ignore malformed hrefs */ }
+    // Social icon links always open in a new tab.
+    if (a.closest('.footer-social')) {
+      a.target = '_blank';
+      a.rel = 'noopener';
+    }
+  });
+}
+
 /**
  * Toggles all storeSelector sections
  * @param {Element} sections The container element
@@ -167,6 +378,8 @@ export default async function decorate(block) {
     }
   }
   while (fragment.firstElementChild) footer.append(fragment.firstElementChild);
+
+  decorateFooterContent(footer);
 
   block.append(footer);
 }
