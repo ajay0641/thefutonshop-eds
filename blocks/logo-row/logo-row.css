@@ -1,5 +1,12 @@
 /* Logo Row Block - centered wrapping row of press / media logos */
 
+/* Section heading ("Featured In") centered above the logos */
+.logo-row-container .default-content-wrapper h2 {
+  margin: 0 0 32px;
+  font-weight: 400;
+  text-align: center;
+}
+
 .logo-row .logo-row-list {
   display: flex;
   flex-wrap: wrap;
@@ -32,10 +39,18 @@
 
 @media (min-width: 900px) {
   .logo-row .logo-row-list {
-    gap: 32px 48px;
+    gap: 40px 56px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  /* Four logos per row (top row 4, remaining wrap below and center) */
+  .logo-row .logo-row-item {
+    flex: 0 0 auto;
+    width: calc((100% - 3 * 56px) / 4);
   }
 
   .logo-row .logo-row-item img {
-    height: 70px;
+    height: 60px;
   }
 }

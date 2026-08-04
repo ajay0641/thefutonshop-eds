@@ -2,9 +2,23 @@
     width: 100%;
 }
 
+/* Section heading + subheading above the grid (centered, matches source) */
+.feature-grid-container .default-content-wrapper h2,
+.feature-grid-container .default-content-wrapper h3 {
+    margin: 0 auto 8px;
+    font-weight: 400;
+    text-align: center;
+}
+
+.feature-grid-container .default-content-wrapper h3 {
+    margin-bottom: 32px;
+    font-size: 18px;
+    letter-spacing: 0.04em;
+}
+
 .feature-grid .feature-grid-list {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
     gap: 16px;
     margin: 0 auto;
     padding: 0;
@@ -27,6 +41,7 @@
 .feature-grid .feature-grid-image {
     display: block;
     line-height: 0;
+    height: 100%;
 }
 
 .feature-grid .feature-grid-image img {
@@ -43,52 +58,22 @@
 }
 
 .feature-grid .feature-grid-link:hover .feature-grid-image img {
-    transform: scale(1.04);
+    transform: scale(1.03);
 }
 
+/* Category name is baked into each source image, so the authored heading +
+   CTA are kept in the DOM for accessibility/SEO but hidden visually. */
 .feature-grid .feature-grid-caption {
     position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    padding: 24px;
-    background: rgb(0 0 0 / 15%);
-    text-align: center;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
 }
 
-.feature-grid .feature-grid-heading {
-    display: block;
-    max-width: 90%;
-    color: #fff;
-    font-family: Optima, "Segoe UI", sans-serif;
-    font-size: 22px;
-    font-weight: 600;
-    line-height: 1.2;
-    text-shadow: 0 1px 4px rgb(0 0 0 / 45%);
-    text-transform: uppercase;
-}
-
-.feature-grid .feature-grid-cta {
-    display: inline-block;
-    padding: 10px 22px;
-    border: 1px solid #fff;
-    background: rgb(255 255 255 / 10%);
-    color: #fff;
-    font-size: 13px;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    transition: background 0.3s ease, color 0.3s ease;
-}
-
-.feature-grid .feature-grid-link:hover .feature-grid-cta {
-    background: #fff;
-    color: #000;
-}
-
-/* ---------- Tablet / Desktop ---------- */
+/* ---------- Tablet / Desktop: tall featured tile + 2x2 grid ---------- */
 @media (min-width: 900px) {
     .feature-grid .feature-grid-list {
         grid-template-columns: repeat(4, 1fr);
@@ -105,19 +90,7 @@
         grid-column: span 2;
     }
 
-    .feature-grid .feature-grid-link {
-        height: 100%;
-    }
-
-    .feature-grid .feature-grid-image {
-        height: 100%;
-    }
-
-    .feature-grid .feature-grid-image img {
+    .feature-grid .feature-grid-tile-featured .feature-grid-image img {
         aspect-ratio: auto;
-    }
-
-    .feature-grid .feature-grid-heading {
-        font-size: 26px;
     }
 }
