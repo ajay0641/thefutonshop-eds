@@ -49,10 +49,37 @@
   max-width: 100%;
 }
 
-/* icon rows within a panel (default / Farm to Furniture usage) */
-.tabs .tabs-panel picture + picture,
-.tabs .tabs-panel p picture + picture {
-  margin-left: 8px;
+/* Right-side media (image or video) */
+.tabs .tabs-panel-media {
+  line-height: 0;
+}
+
+.tabs .tabs-panel-media img,
+.tabs .tabs-panel-media video {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+/* Certification icon grid (Farm to Furniture panels) */
+.tabs .tabs-panel .tabs-icons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px 12px;
+  align-items: center;
+  max-width: 420px;
+  margin: 24px 0;
+}
+
+.tabs .tabs-panel .tabs-icon {
+  display: flex;
+  justify-content: center;
+}
+
+.tabs .tabs-panel .tabs-icon img {
+  width: auto;
+  max-height: 84px;
 }
 
 .tabs .tabs-panel a {
@@ -113,12 +140,20 @@
     font-size: 18px;
   }
 
-  /* default usage: text on the left, images on the right */
+  /* default usage: text on the left, media on the right */
   .tabs:not(.cards) .tabs-panel:not([hidden]) {
     align-items: center;
     display: grid;
-    gap: 40px;
+    gap: 48px;
     grid-template-columns: 1fr 1fr;
+  }
+
+  .tabs .tabs-panel .tabs-icons {
+    gap: 20px 16px;
+  }
+
+  .tabs .tabs-panel .tabs-icon img {
+    max-height: 96px;
   }
 }
 
