@@ -193,7 +193,7 @@
 }
 
 .tabs.cards .tabs-panel {
-  position: relative;
+  text-align: center;
 }
 
 .tabs.cards .tabs-panel picture {
@@ -202,31 +202,24 @@
 }
 
 .tabs.cards .tabs-panel img {
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 3;
   display: block;
   object-fit: cover;
   width: 100%;
 }
 
 .tabs.cards .tabs-panel h3 {
-  bottom: 40px;
-  color: #fff;
+  margin: 16px 0 4px;
+  color: #000;
   font-size: 24px;
-  left: 30px;
-  margin: 0;
-  position: absolute;
-  right: 30px;
+  font-weight: 400;
 }
 
 .tabs.cards .tabs-panel p,
 .tabs.cards .tabs-panel h3 + p {
-  bottom: 20px;
-  color: #fff;
-  font-size: 15px;
-  left: 30px;
   margin: 0;
-  position: absolute;
-  right: 30px;
+  color: #000;
+  font-size: 15px;
 }
 
 @media (min-width: 900px) {
