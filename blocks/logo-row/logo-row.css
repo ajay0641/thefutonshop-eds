@@ -1,0 +1,41 @@
+/* Logo Row Block - centered wrapping row of press / media logos */
+
+.logo-row .logo-row-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 24px 32px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.logo-row .logo-row-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+}
+
+.logo-row .logo-row-item picture,
+.logo-row .logo-row-item img {
+  display: block;
+}
+
+.logo-row .logo-row-item img {
+  width: auto;
+  height: 48px;
+  object-fit: contain;
+}
+
+@media (min-width: 900px) {
+  .logo-row .logo-row-list {
+    gap: 32px 48px;
+  }
+
+  .logo-row .logo-row-item img {
+    height: 70px;
+  }
+}

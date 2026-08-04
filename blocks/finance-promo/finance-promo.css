@@ -1,0 +1,97 @@
+/* Finance Promo Block - Synchrony financing band */
+
+.finance-promo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 24px 20px;
+  background-color: #424242;
+  color: #fff;
+  font-family: var(--body-font-family, 'Lato', sans-serif);
+  text-align: center;
+}
+
+.finance-promo .finance-promo-media {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.finance-promo .finance-promo-media picture,
+.finance-promo .finance-promo-media img {
+  display: block;
+  max-width: 220px;
+  height: auto;
+}
+
+.finance-promo .finance-promo-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.finance-promo .finance-promo-heading {
+  margin: 0;
+  color: #fff;
+  font-weight: 600;
+}
+
+.finance-promo .finance-promo-eyebrow {
+  font-size: 14px;
+  letter-spacing: 0.5px;
+}
+
+.finance-promo .finance-promo-title {
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.finance-promo .finance-promo-text {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.finance-promo .finance-promo-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.finance-promo .finance-promo-cta {
+  display: inline-block;
+  padding: 12px 20px;
+  border: 0;
+  background-color: #63573e;
+  color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  line-height: 1;
+  text-decoration: none;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.finance-promo .finance-promo-cta:hover,
+.finance-promo .finance-promo-cta:focus {
+  background-color: #4f4531;
+  color: #fff;
+}
+
+@media (min-width: 900px) {
+  .finance-promo {
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 30px;
+    padding: 20px 40px;
+    text-align: left;
+  }
+
+  .finance-promo .finance-promo-title {
+    font-size: 32px;
+  }
+}
