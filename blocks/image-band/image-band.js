@@ -29,5 +29,19 @@ export default function decorate(block) {
     } else if (picture) {
       row.replaceChildren(picture);
     }
+
+    // Size each item's width proportional to its image aspect ratio so the
+    // images sit side-by-side at a shared height (matches source layouts where
+    // panels aren't necessarily equal width). Equal-ratio images give 50/50.
+    const img = row.querySelector('img');
+    if (img) {
+      const setRatio = () => {
+        if (img.naturalWidth && img.naturalHeight) {
+          row.style.flexGrow = (img.naturalWidth / img.naturalHeight).toFixed(4);
+        }
+      };
+      if (img.complete) setRatio();
+      else img.addEventListener('load', setRatio, { once: true });
+    }
   });
 }
