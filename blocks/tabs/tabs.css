@@ -1,0 +1,229 @@
+/* Tabs Block */
+
+.tabs {
+  background-color: #eaeae3;
+  color: #000;
+  padding: 40px 20px;
+}
+
+.tabs .tabs-viewport {
+  margin: 0 auto;
+  max-width: 1200px;
+}
+
+.tabs .tabs-panels {
+  position: relative;
+}
+
+.tabs .tabs-panel[hidden] {
+  display: none;
+}
+
+.tabs .tabs-panel h2 {
+  font-size: 32px;
+  font-weight: 400;
+  line-height: 1.1;
+  margin: 0 0 8px;
+}
+
+.tabs .tabs-panel h3 {
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.2;
+  margin: 0 0 16px;
+}
+
+.tabs .tabs-panel p {
+  font-size: 16px;
+  line-height: 1.45;
+  margin: 0 0 16px;
+}
+
+.tabs .tabs-panel picture {
+  display: inline-block;
+  line-height: 0;
+}
+
+.tabs .tabs-panel img {
+  height: auto;
+  max-width: 100%;
+}
+
+/* icon rows within a panel (default / Farm to Furniture usage) */
+.tabs .tabs-panel picture + picture,
+.tabs .tabs-panel p picture + picture {
+  margin-left: 8px;
+}
+
+.tabs .tabs-panel a {
+  color: #4a412f;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.tabs .tabs-panel a:hover {
+  text-decoration: underline;
+}
+
+/* numbered indicators */
+.tabs .tabs-indicators {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 32px;
+}
+
+.tabs .tabs-indicator {
+  background-color: #fff;
+  border: 1px solid #c9c9c0;
+  border-radius: 50%;
+  color: transparent;
+  cursor: pointer;
+  font-size: 0;
+  height: 12px;
+  overflow: hidden;
+  padding: 0;
+  transition: background-color 0.2s ease;
+  width: 12px;
+}
+
+.tabs .tabs-indicator:hover {
+  background-color: #d8d8cf;
+}
+
+.tabs .tabs-indicator.active {
+  background-color: #4a412f;
+  border-color: #4a412f;
+}
+
+@media (min-width: 900px) {
+  .tabs {
+    padding: 60px 40px;
+  }
+
+  .tabs .tabs-panel h2 {
+    font-size: 42px;
+  }
+
+  .tabs .tabs-panel h3 {
+    font-size: 24px;
+  }
+
+  .tabs .tabs-panel p {
+    font-size: 18px;
+  }
+
+  /* default usage: text on the left, images on the right */
+  .tabs:not(.cards) .tabs-panel:not([hidden]) {
+    align-items: center;
+    display: grid;
+    gap: 40px;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ---- cards variant: Certified Organic Ingredients ---- */
+
+.tabs.cards {
+  background-color: #fff;
+  color: #000;
+}
+
+.tabs.cards .tabs-intro {
+  margin: 0 auto 32px;
+  max-width: 1200px;
+}
+
+.tabs.cards .tabs-intro h2 {
+  font-size: 32px;
+  font-weight: 400;
+  margin: 0 0 16px;
+}
+
+.tabs.cards .tabs-intro p {
+  font-size: 16px;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.tabs.cards .tabs-intro a {
+  color: #4a412f;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-decoration: none;
+}
+
+.tabs.cards .tabs-intro a:hover {
+  text-decoration: underline;
+}
+
+.tabs.cards .tabs-panel {
+  position: relative;
+}
+
+.tabs.cards .tabs-panel picture {
+  display: block;
+  line-height: 0;
+}
+
+.tabs.cards .tabs-panel img {
+  aspect-ratio: 1 / 1;
+  display: block;
+  object-fit: cover;
+  width: 100%;
+}
+
+.tabs.cards .tabs-panel h3 {
+  bottom: 40px;
+  color: #fff;
+  font-size: 24px;
+  left: 30px;
+  margin: 0;
+  position: absolute;
+  right: 30px;
+}
+
+.tabs.cards .tabs-panel p,
+.tabs.cards .tabs-panel h3 + p {
+  bottom: 20px;
+  color: #fff;
+  font-size: 15px;
+  left: 30px;
+  margin: 0;
+  position: absolute;
+  right: 30px;
+}
+
+@media (min-width: 900px) {
+  .tabs.cards {
+    align-items: start;
+    display: grid;
+    gap: 48px;
+    grid-template-columns: 1fr 1.2fr;
+    padding: 60px 40px;
+  }
+
+  .tabs.cards .tabs-intro {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0;
+  }
+
+  .tabs.cards .tabs-viewport {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0;
+  }
+
+  .tabs.cards .tabs-intro h2 {
+    font-size: 42px;
+  }
+
+  .tabs.cards .tabs-intro p {
+    font-size: 18px;
+  }
+
+  .tabs.cards .tabs-panel h3 {
+    font-size: 28px;
+  }
+}

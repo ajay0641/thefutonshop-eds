@@ -1,0 +1,41 @@
+.promo-banner {
+  width: 100%;
+  margin: 24px 0;
+}
+
+.promo-banner .promo-banner-link {
+  display: block;
+  text-decoration: none;
+}
+
+.promo-banner .promo-banner-link picture {
+  display: block;
+  width: 100%;
+}
+
+.promo-banner .promo-banner-link img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Multi-image banners (photo + promo graphic) stack on mobile. */
+.promo-banner-multi .promo-banner-link {
+  display: flex;
+  flex-direction: column;
+}
+
+.promo-banner-multi .promo-banner-link picture {
+  flex: 1 1 100%;
+}
+
+@media (min-width: 900px) {
+  .promo-banner-multi .promo-banner-link {
+    flex-direction: row;
+  }
+
+  .promo-banner-multi .promo-banner-link picture {
+    flex: 1 1 50%;
+    width: 50%;
+  }
+}
