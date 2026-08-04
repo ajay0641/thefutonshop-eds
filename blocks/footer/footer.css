@@ -329,7 +329,7 @@ footer .footer-bottom a {
 @media (min-width: 600px) {
     footer .footer-newsletter > div {
         flex-direction: row;
-        justify-content: space-between;
+        justify-content: center;
         gap: 24px;
     }
 
