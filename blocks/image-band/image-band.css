@@ -1,0 +1,31 @@
+.image-band {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.image-band .image-band-item {
+    flex: 1;
+    min-width: 0;
+    line-height: 0;
+}
+
+.image-band .image-band-item a,
+.image-band .image-band-item picture {
+    display: block;
+}
+
+.image-band .image-band-item img {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+}
+
+/* ---------- Tablet / Desktop: images sit side-by-side ---------- */
+@media (min-width: 900px) {
+    .image-band {
+        flex-direction: row;
+        justify-content: center;
+    }
+}
