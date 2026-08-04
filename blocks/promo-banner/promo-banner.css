@@ -32,6 +32,7 @@
 @media (min-width: 900px) {
   .promo-banner-multi .promo-banner-link {
     flex-direction: row;
+    column-gap: 20px;
   }
 
   .promo-banner-multi .promo-banner-link picture {

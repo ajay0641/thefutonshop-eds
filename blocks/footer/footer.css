@@ -364,7 +364,6 @@ footer .footer-bottom a {
     }
 
     footer .footer-bottom > div {
-        flex-direction: row;
         justify-content: flex-start;
         gap: 32px;
         text-align: left;
