@@ -274,6 +274,7 @@ button {
 }
 
 /* links */
+
 /* a:not(.dropin-design a) {
   color: var(--color-brand-500);
   font: var(--type-body-1-strong-font);
@@ -286,9 +287,11 @@ a:not(.dropin-design a):hover {
   color: var(--color-brand-600);
   text-decoration: underline;
 } */
+
 a {
   color: var(--color-brand-500);
 }
+
 a:hover {
   color: var(--color-brand-600);
 }
@@ -471,19 +474,13 @@ main > .section {
 }
 
 main > .section > div {
-  max-width: 1200px;
+  max-width: 1630px;
   margin: auto;
-  padding: 0 var(--spacing-medium);
+  padding: 0 15px;
 }
 
 main > .section:first-of-type {
   margin-top: 0;
-}
-
-@media (min-width: 900px) {
-  main > .section > div {
-    padding: 0 var(--spacing-big);
-  }
 }
 
 /* section metadata - styles - start */
