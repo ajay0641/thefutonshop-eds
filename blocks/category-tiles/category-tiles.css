@@ -2,6 +2,14 @@
     width: 100%;
 }
 
+/* Section heading above the tiles (matches source: centered, 28px) */
+.category-tiles-container .default-content-wrapper h1 {
+    margin: 0 0 24px;
+    font-size: 28px;
+    font-weight: 400;
+    text-align: center;
+}
+
 .category-tiles .category-tiles-list {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
