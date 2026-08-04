@@ -1,0 +1,61 @@
+.category-tiles {
+    width: 100%;
+}
+
+.category-tiles .category-tiles-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin: 0 auto;
+    padding: 0;
+    max-width: 1280px;
+    list-style: none;
+}
+
+.category-tiles .category-tile {
+    margin: 0;
+}
+
+.category-tiles .category-tile-link {
+    display: block;
+    color: #000;
+    text-decoration: none;
+}
+
+.category-tiles .category-tile-image {
+    display: block;
+    line-height: 0;
+}
+
+.category-tiles .category-tile-image img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 315 / 386;
+    object-fit: cover;
+}
+
+.category-tiles .category-tile-label {
+    display: block;
+    margin-top: 12px;
+    color: #000;
+    font-size: 16px;
+    text-align: center;
+    transition: color 0.3s ease;
+}
+
+.category-tiles .category-tile-link:hover .category-tile-label {
+    color: #5f665a;
+}
+
+/* ---------- Tablet / Desktop ---------- */
+@media (min-width: 900px) {
+    .category-tiles .category-tiles-list {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 24px;
+    }
+
+    .category-tiles .category-tile-label {
+        font-size: 14px;
+    }
+}
