@@ -37,6 +37,11 @@
     object-fit: cover;
 }
 
+/* Custom section style hook (via section-metadata style="timeless-section") */
+.timeless-section .default-content-wrapper h2 {
+    font-size: 32px;
+}
+
 /* ---------- Tablet / Desktop: images sit side-by-side ---------- */
 @media (min-width: 900px) {
     .image-band {
@@ -44,6 +49,7 @@
         justify-content: center;
         align-items: stretch;
     }
+
     .timeless-section .image-band {
         column-gap: 30px;
     }
