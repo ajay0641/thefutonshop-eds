@@ -9,8 +9,6 @@ import {
   loadSections,
   loadCSS,
   buildBlock,
-  readBlockConfig,
-  toClassName,
 } from './aem.js';
 import {
   loadCommerceEager,
@@ -186,36 +184,11 @@ function decorateButtons(main) {
  * Decorates the main element.
  * @param {Element} main The main element
  */
-/**
- * Applies `section-metadata` blocks as configuration on their parent section.
- * The `style` value becomes one or more classes on the section wrapper, and any
- * other key becomes a `data-*` attribute (mirrors standard AEM boilerplate,
- * which the commerce decorateSections omits).
- * @param {Element} main The main element
- */
-function decorateSectionMetadata(main) {
-  main.querySelectorAll('div.section-metadata').forEach((metaBlock) => {
-    const section = metaBlock.closest('.section');
-    if (!section) return;
-    const meta = readBlockConfig(metaBlock);
-    Object.keys(meta).forEach((key) => {
-      if (key === 'style') {
-        meta.style.split(',').map((s) => toClassName(s.trim())).filter(Boolean)
-          .forEach((c) => section.classList.add(c));
-      } else {
-        section.dataset[toClassName(key)] = meta[key];
-      }
-    });
-    metaBlock.parentElement.remove();
-  });
-}
-
 export function decorateMain(main) {
   decorateLinks(main);
   decorateIcons(main);
   buildAutoBlocks(main);
   decorateSections(main);
-  decorateSectionMetadata(main);
   decorateBlocks(main);
   decorateButtons(main);
 }
