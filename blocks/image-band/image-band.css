@@ -27,6 +27,7 @@
 .image-band .image-band-item a,
 .image-band .image-band-item picture {
     display: block;
+    height: 100%;
 }
 
 .image-band .image-band-item img {
@@ -41,5 +42,16 @@
     .image-band {
         flex-direction: row;
         justify-content: center;
+        align-items: stretch;
+    }
+
+    /* Width proportional to each image's aspect ratio (flex-grow set in JS),
+       so panels share a common height and keep their intrinsic proportions. */
+    .image-band .image-band-item {
+        flex-basis: 0;
+    }
+
+    .image-band .image-band-item img {
+        height: 100%;
     }
 }
