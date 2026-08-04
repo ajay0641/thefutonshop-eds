@@ -2,6 +2,20 @@
     width: 100%;
 }
 
+/* Section heading + subheading above the grid (centered, matches source) */
+.feature-grid-container .default-content-wrapper h2,
+.feature-grid-container .default-content-wrapper h3 {
+    margin: 0 auto 8px;
+    font-weight: 400;
+    text-align: center;
+}
+
+.feature-grid-container .default-content-wrapper h3 {
+    margin-bottom: 32px;
+    font-size: 18px;
+    letter-spacing: 0.04em;
+}
+
 .feature-grid .feature-grid-list {
     display: grid;
     grid-template-columns: repeat(2, 1fr);

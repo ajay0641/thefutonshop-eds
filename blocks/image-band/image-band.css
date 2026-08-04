@@ -4,6 +4,20 @@
     width: 100%;
 }
 
+/* Section heading above an image band (centered, matches source) */
+.image-band-container .default-content-wrapper h2,
+.image-band-container .default-content-wrapper h3 {
+    margin: 0 auto 12px;
+    font-weight: 400;
+    text-align: center;
+}
+
+.image-band-container .default-content-wrapper h3 {
+    margin-bottom: 32px;
+    font-size: 18px;
+    color: #555;
+}
+
 .image-band .image-band-item {
     flex: 1;
     min-width: 0;
