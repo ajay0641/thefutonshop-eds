@@ -44,6 +44,9 @@
         justify-content: center;
         align-items: stretch;
     }
+    .timeless-section .image-band {
+        column-gap: 30px;
+    }
 
     /* Width proportional to each image's aspect ratio (flex-grow set in JS),
        so panels share a common height and keep their intrinsic proportions. */
