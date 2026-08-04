@@ -63,12 +63,63 @@ export default function decorate(block) {
   nav.setAttribute('aria-label', 'Select a panel');
 
   panelRows.forEach((row, i) => {
-    const cell = row.children.length === 1 ? row.firstElementChild : row;
     const panel = document.createElement('div');
     panel.className = 'tabs-panel';
     panel.id = `tabs-panel-${i}`;
     panel.setAttribute('role', 'tabpanel');
-    panel.append(...cell.childNodes);
+
+    if (!isCards && row.children.length >= 2) {
+      // Two-column panel: left = text + icons + link, right = media.
+      const [textCell, mediaCell] = row.children;
+      textCell.classList.add('tabs-panel-text');
+      mediaCell.classList.add('tabs-panel-media');
+
+      // Group the certification icon images (paragraphs that contain images)
+      // into a dedicated icon grid so they lay out as rows of badges.
+      const iconParas = [...textCell.querySelectorAll(':scope > p')]
+        .filter((p) => p.querySelector('picture, img'));
+      if (iconParas.length) {
+        const icons = document.createElement('div');
+        icons.className = 'tabs-icons';
+        iconParas.forEach((p) => {
+          // One icon per picture (or bare img not inside a picture).
+          const nodes = p.querySelector('picture')
+            ? p.querySelectorAll(':scope picture')
+            : p.querySelectorAll(':scope img');
+          nodes.forEach((node) => {
+            const item = document.createElement('span');
+            item.className = 'tabs-icon';
+            item.append(node);
+            icons.append(item);
+          });
+          p.remove();
+        });
+        // Insert the icon grid before the final link paragraph if present.
+        const linkPara = textCell.querySelector(':scope > p:last-of-type');
+        if (linkPara && linkPara.querySelector('a')) textCell.insertBefore(icons, linkPara);
+        else textCell.append(icons);
+      }
+
+      // Convert an mp4 link in the media cell into an inline looping video.
+      const mediaLink = mediaCell.querySelector('a[href$=".mp4"]');
+      if (mediaLink) {
+        const video = document.createElement('video');
+        video.src = mediaLink.getAttribute('href');
+        video.autoplay = true;
+        video.muted = true;
+        video.loop = true;
+        video.playsInline = true;
+        const poster = mediaCell.querySelector('img');
+        if (poster) video.poster = poster.getAttribute('src');
+        mediaCell.replaceChildren(video);
+      }
+
+      panel.append(textCell, mediaCell);
+    } else {
+      const cell = row.children.length === 1 ? row.firstElementChild : row;
+      panel.append(...cell.childNodes);
+    }
+
     track.append(panel);
     row.remove();
 
