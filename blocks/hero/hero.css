@@ -35,3 +35,147 @@
     padding: 40px 32px;
   }
 }
+
+/* ==========================================================================
+   Carousel variant (multiple slides) — overrides the static hero layout
+   ========================================================================== */
+.hero.hero-carousel {
+  position: relative;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.hero.hero-carousel .hero-slides {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.hero.hero-carousel .hero-slides::-webkit-scrollbar {
+  display: none;
+}
+
+.hero.hero-carousel .hero-slide {
+  position: relative;
+  flex: 0 0 100%;
+  width: 100%;
+  scroll-snap-align: start;
+}
+
+.hero.hero-carousel .hero-slide a,
+.hero.hero-carousel .hero-slide picture {
+  display: block;
+  position: static;
+  inset: auto;
+  z-index: auto;
+}
+
+.hero.hero-carousel .hero-slide img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1600 / 560;
+  object-fit: cover;
+}
+
+/* Prev / next arrows */
+.hero.hero-carousel .hero-prev,
+.hero.hero-carousel .hero-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 70%);
+  font-size: 0;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.hero.hero-carousel .hero-prev {
+  left: 16px;
+}
+
+.hero.hero-carousel .hero-next {
+  right: 16px;
+}
+
+.hero.hero-carousel .hero-prev::before,
+.hero.hero-carousel .hero-next::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  border-top: 2px solid #333;
+  border-right: 2px solid #333;
+}
+
+.hero.hero-carousel .hero-prev::before {
+  transform: translate(-30%, -50%) rotate(-135deg);
+}
+
+.hero.hero-carousel .hero-next::before {
+  transform: translate(-70%, -50%) rotate(45deg);
+}
+
+.hero.hero-carousel .hero-prev:hover,
+.hero.hero-carousel .hero-next:hover {
+  background: rgb(255 255 255 / 95%);
+}
+
+/* Indicators */
+.hero.hero-carousel .hero-indicators {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  gap: 10px;
+}
+
+.hero.hero-carousel .hero-indicator button {
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 90%);
+  border-radius: 50%;
+  background: rgb(255 255 255 / 40%);
+  font-size: 0;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.hero.hero-carousel .hero-indicator button[aria-current="true"] {
+  background: #fff;
+}
+
+@media (max-width: 600px) {
+  .hero.hero-carousel .hero-prev,
+  .hero.hero-carousel .hero-next {
+    width: 32px;
+    height: 32px;
+  }
+
+  .hero.hero-carousel .hero-indicators {
+    bottom: 8px;
+    gap: 6px;
+  }
+
+  .hero.hero-carousel .hero-indicator button {
+    width: 8px;
+    height: 8px;
+  }
+}
