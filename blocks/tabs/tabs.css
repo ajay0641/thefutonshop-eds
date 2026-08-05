@@ -273,6 +273,13 @@
     margin: 0;
   }
 
+  /* Indicators span the full width and sit centered below both columns */
+  .tabs.cards .tabs-indicators {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-top: 8px;
+  }
+
   .tabs.cards .tabs-intro h2 {
     font-size: 42px;
   }

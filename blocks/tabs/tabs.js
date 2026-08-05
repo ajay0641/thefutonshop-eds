@@ -141,7 +141,7 @@ export default function decorate(block) {
     nav.append(button);
   });
 
-  viewport.append(track, nav);
+  viewport.append(track);
 
   if (intro) {
     intro.className = 'tabs-intro';
@@ -152,6 +152,11 @@ export default function decorate(block) {
   } else {
     block.append(viewport);
   }
+
+  // Indicators: for the cards variant place them at the section level (so they
+  // can center at the bottom, full width); otherwise inside the viewport.
+  if (isCards) block.append(nav);
+  else viewport.append(nav);
 
   showPanel(block, 0);
 }
