@@ -264,6 +264,7 @@
   font-size: 14px;
   text-shadow: 0 1px 4px rgb(0 0 0 / 35%);
 }
+
 .tabs.cards .tabs-panel h3 + p {
   position: absolute;
   top: 70px;
