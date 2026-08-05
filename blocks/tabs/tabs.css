@@ -160,7 +160,7 @@
 /* ---- cards variant: Certified Organic Ingredients ---- */
 
 .tabs.cards {
-  background-color: #fff;
+  background-color: #d9d9d1;
   color: #000;
 }
 
@@ -168,6 +168,33 @@
 .tabs.cards .tabs-panels {
   display: flex;
   gap: 20px;
+}
+
+/* Full-bleed sage strip behind the indicators (matches source) */
+.tabs.cards .tabs-indicators {
+  position: relative;
+  padding: 18px 0;
+  background-color: #92947f;
+}
+
+.tabs.cards .tabs-indicators::before {
+  content: '';
+  position: absolute;
+  inset: 0 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  background-color: #92947f;
+  z-index: -1;
+}
+
+.tabs.cards .tabs-indicator {
+  background-color: rgb(255 255 255 / 45%);
+  border-color: #fff;
+}
+
+.tabs.cards .tabs-indicator.active {
+  background-color: #4a412f;
+  border-color: #4a412f;
 }
 
 .tabs.cards .tabs-intro {
