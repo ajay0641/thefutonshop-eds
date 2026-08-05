@@ -164,6 +164,12 @@
   color: #000;
 }
 
+/* Cards slider: show two material cards side-by-side per view */
+.tabs.cards .tabs-panels {
+  display: flex;
+  gap: 20px;
+}
+
 .tabs.cards .tabs-intro {
   margin: 0 auto 32px;
   max-width: 1200px;
@@ -193,6 +199,9 @@
 }
 
 .tabs.cards .tabs-panel {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
   text-align: center;
 }
 
@@ -208,18 +217,29 @@
   width: 100%;
 }
 
+/* Heading + caption overlaid near the top of the card image (white text) */
 .tabs.cards .tabs-panel h3 {
-  margin: 16px 0 4px;
-  color: #000;
+  position: absolute;
+  top: 22px;
+  left: 20px;
+  right: 20px;
+  margin: 0;
+  color: #fff;
   font-size: 24px;
   font-weight: 400;
+  text-shadow: 0 1px 4px rgb(0 0 0 / 35%);
 }
 
 .tabs.cards .tabs-panel p,
 .tabs.cards .tabs-panel h3 + p {
+  position: absolute;
+  top: 58px;
+  left: 20px;
+  right: 20px;
   margin: 0;
-  color: #000;
-  font-size: 15px;
+  color: #fff;
+  font-size: 14px;
+  text-shadow: 0 1px 4px rgb(0 0 0 / 35%);
 }
 
 @media (min-width: 900px) {
