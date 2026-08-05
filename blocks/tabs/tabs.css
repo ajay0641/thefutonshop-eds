@@ -211,10 +211,20 @@
 }
 
 .tabs.cards .tabs-panel img {
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1 / 1;
   display: block;
   object-fit: cover;
   width: 100%;
+}
+
+/* Subtle top gradient so overlaid heading/caption stay legible */
+.tabs.cards .tabs-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 45%;
+  background: linear-gradient(to bottom, rgb(0 0 0 / 30%), rgb(0 0 0 / 0%));
+  pointer-events: none;
 }
 
 /* Heading + caption overlaid near the top of the card image (white text) */
