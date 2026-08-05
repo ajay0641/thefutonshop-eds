@@ -167,7 +167,7 @@
 /* Cards slider: show two material cards side-by-side per view */
 .tabs.cards .tabs-panels {
   display: flex;
-  gap: 20px;
+  gap: 30px;
 }
 
 /* Full-bleed sage strip behind the indicators (matches source) */
@@ -175,16 +175,6 @@
   position: relative;
   padding: 18px 0;
   background-color: #92947f;
-}
-
-.tabs.cards .tabs-indicators::before {
-  content: '';
-  position: absolute;
-  inset: 0 50%;
-  width: 100vw;
-  transform: translateX(-50%);
-  background-color: #92947f;
-  z-index: -1;
 }
 
 .tabs.cards .tabs-indicator {
@@ -269,14 +259,16 @@
 
 .tabs.cards .tabs-panel p,
 .tabs.cards .tabs-panel h3 + p {
-  position: absolute;
-  top: 58px;
-  left: 20px;
-  right: 20px;
   margin: 0;
   color: #fff;
   font-size: 14px;
   text-shadow: 0 1px 4px rgb(0 0 0 / 35%);
+}
+.tabs.cards .tabs-panel h3 + p {
+  position: absolute;
+  top: 70px;
+  left: 0;
+  right: 0;
 }
 
 @media (min-width: 900px) {
@@ -284,27 +276,29 @@
     align-items: start;
     display: grid;
     gap: 48px;
-    grid-template-columns: 1fr 1.2fr;
-    padding: 60px 40px;
+    grid-template-columns: 1fr 2fr;
+    padding: 60px 0 0;
   }
 
   .tabs.cards .tabs-intro {
     grid-column: 1;
     grid-row: 1;
     margin: 0;
+    padding: 0 0 0 50px;
   }
 
   .tabs.cards .tabs-viewport {
     grid-column: 2;
     grid-row: 1;
     margin: 0;
+    padding: 0 50px 0 0;
   }
 
   /* Indicators span the full width and sit centered below both columns */
   .tabs.cards .tabs-indicators {
     grid-column: 1 / -1;
     grid-row: 2;
-    margin-top: 8px;
+    margin-top: 50px;
   }
 
   .tabs.cards .tabs-intro h2 {
