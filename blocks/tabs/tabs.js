@@ -16,11 +16,16 @@ function showPanel(block, index) {
   const buttons = block.querySelectorAll('.tabs-indicator');
   if (!panels.length) return;
   const target = ((index % panels.length) + panels.length) % panels.length;
+  // Number of panels shown per view (cards variant can show more than one).
+  const perView = Math.max(1, parseInt(block.dataset.perView || '1', 10));
 
   panels.forEach((panel, i) => {
-    const active = i === target;
+    // Reveal `perView` consecutive panels starting at the target index.
+    const offset = (((i - target) % panels.length) + panels.length) % panels.length;
+    const active = offset < perView;
     panel.hidden = !active;
     panel.setAttribute('aria-hidden', String(!active));
+    panel.style.order = active ? String(offset) : '';
     panel.querySelectorAll('a').forEach((link) => {
       if (active) link.removeAttribute('tabindex');
       else link.setAttribute('tabindex', '-1');
@@ -49,6 +54,8 @@ export default function decorate(block) {
   if (isCards && rows.length > 1) {
     [intro] = rows;
     panelRows = rows.slice(1);
+    // Cards slider shows two material cards per view (matches source).
+    block.dataset.perView = '2';
   }
 
   const viewport = document.createElement('div');
