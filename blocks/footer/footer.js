@@ -18,9 +18,6 @@ const MEDIA_OVERRIDES = {
   'newtfs-24-logo.png': `${MEDIA_BASE}homepagenew/newtfs-24-logo.png`,
 };
 
-// Newsletter subscribe endpoint (source parity).
-const NEWSLETTER_ACTION = 'https://www.thefutonshop.com/newsletter/subscriber/new/';
-
 /**
  * Resolves a relative fragment image path to its hosted source URL.
  * @param {string} src The image src as authored (e.g. images/facebook-footer.webp)
@@ -69,79 +66,26 @@ function groupIntoColumns(wrapper, isColumnStart, colClass) {
 }
 
 /**
- * Builds the newsletter subscribe form and appends it to the given container.
- * Controls are created here (not in the fragment) so the fragment stays portable.
- * @param {Element} container The newsletter section content wrapper
- */
-function buildNewsletterForm(container) {
-  const form = document.createElement('form');
-  form.className = 'footer-newsletter-form';
-  form.setAttribute('novalidate', '');
-
-  const field = document.createElement('div');
-  field.className = 'footer-newsletter-field';
-
-  const label = document.createElement('label');
-  label.className = 'footer-newsletter-label';
-  label.setAttribute('for', 'footer-newsletter-email');
-  label.textContent = 'Newsletter';
-
-  const input = document.createElement('input');
-  input.type = 'email';
-  input.id = 'footer-newsletter-email';
-  input.name = 'email';
-  input.required = true;
-  input.placeholder = 'Enter your email address...';
-  input.setAttribute('aria-label', 'Enter your email address');
-
-  const button = document.createElement('button');
-  button.type = 'submit';
-  button.className = 'footer-newsletter-submit';
-  button.textContent = 'Subscribe';
-
-  field.append(label, input, button);
-  form.append(field);
-
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    if (!input.value || !input.checkValidity()) {
-      input.reportValidity();
-      return;
-    }
-    // Submit to the source newsletter endpoint (parity with source site).
-    const submit = document.createElement('form');
-    submit.action = NEWSLETTER_ACTION;
-    submit.method = 'post';
-    submit.target = '_blank';
-    const hidden = document.createElement('input');
-    hidden.type = 'hidden';
-    hidden.name = 'email';
-    hidden.value = input.value;
-    submit.append(hidden);
-    document.body.append(submit);
-    submit.submit();
-    submit.remove();
-    input.value = '';
-  });
-
-  container.append(form);
-}
-
-/**
- * Decorates the footer fragment into the four content bands, builds the
- * newsletter form, groups service and link columns, and resolves media.
+ * Decorates the footer fragment into the four content bands, styles the
+ * authored TFS Newsletter block (from da.live), groups service and link
+ * columns, and resolves media.
+ * Newsletter drop-in is already loaded via loadFragment → decorateMain/loadSections.
  * @param {Element} footer The footer root containing the appended fragment
  */
 function decorateFooterContent(footer) {
   resolveImages(footer);
 
   const sections = [...footer.querySelectorAll(':scope > .section')];
-  const [newsletter, service, links, bottom] = sections;
+  // Prefer the section that contains the authored TFS Newsletter block.
+  const newsletterFromBlock = footer.querySelector(
+    ':scope > .section:has(.tfs-newsletter), :scope > .section:has(.tfs-newsletter-wrapper)',
+  );
+  const remaining = sections.filter((s) => s !== newsletterFromBlock);
+  const newsletter = newsletterFromBlock || remaining.shift();
+  const [service, links, bottom] = remaining;
 
   if (newsletter) {
     newsletter.classList.add('footer-newsletter');
-    const wrapper = newsletter.querySelector('.default-content-wrapper') || newsletter;
-    buildNewsletterForm(wrapper);
   }
 
   if (service) {

@@ -1,0 +1,144 @@
+/* ---------- TFS Newsletter block ---------- */
+.tfs-newsletter {
+  width: 100%;
+}
+
+.tfs-newsletter .tfsnewsletterdropin-newsletter-component {
+  width: 100%;
+  max-width: 28rem;
+}
+
+/* ---------- Footer band (section classed by footer.js) ---------- */
+footer .footer-newsletter {
+  background-color: #5f665a;
+  color: #fff;
+  padding: 22px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+}
+
+footer .footer-newsletter p {
+  margin: 0;
+}
+
+footer .footer-newsletter strong {
+  color: #fff;
+  font-size: 24px;
+  font-weight: 500;
+  text-align: center;
+}
+
+footer .footer-newsletter .tfs-newsletter-wrapper {
+  width: 100%;
+  max-width: 600px;
+}
+
+/* Form look when the block is in the footer newsletter band */
+footer .footer-newsletter .tfs-newsletter {
+  width: 100%;
+  max-width: 620px;
+}
+
+footer .footer-newsletter .tfs-newsletter .tfsnewsletterdropin-newsletter-component {
+  width: 100%;
+  max-width: none;
+}
+
+footer .footer-newsletter .tfs-newsletter .tfsnewsletterdropin-newsletter-component__form {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+}
+
+footer .footer-newsletter .tfs-newsletter .tfsnewsletterdropin-newsletter-component__field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+footer .footer-newsletter .tfs-newsletter .tfsnewsletterdropin-newsletter-component__input,
+footer .footer-newsletter .tfs-newsletter .dropin-input-container,
+footer .footer-newsletter .tfs-newsletter .dropin-input {
+  width: 100%;
+}
+
+footer .footer-newsletter .tfs-newsletter .dropin-input {
+  height: 45px;
+  min-height: 45px;
+  padding: 0 20px;
+  border: 1px solid #eaeae3;
+  border-radius: 0;
+  background: #fff;
+  color: #000;
+  font-family: inherit;
+  font-size: 16px;
+  box-shadow: none;
+}
+
+footer .footer-newsletter .tfs-newsletter .dropin-input:focus {
+  outline: 2px solid #c3aa7a;
+  outline-offset: -2px;
+}
+
+footer .footer-newsletter .tfs-newsletter .tfsnewsletterdropin-newsletter-component__error {
+  margin: 6px 0 0;
+  color: #f5d0d0;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+footer .footer-newsletter .tfs-newsletter .tfsnewsletterdropin-newsletter-component__submit,
+footer .footer-newsletter .tfs-newsletter .dropin-button {
+  flex-shrink: 0;
+  align-self: stretch;
+  height: 45px;
+  min-height: 45px;
+  width: auto;
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 0;
+  background-color: #63573e;
+  color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+footer .footer-newsletter .tfs-newsletter .dropin-button:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+
+footer .footer-newsletter .tfs-newsletter .tfsnewsletterdropin-newsletter-component__submit:hover,
+footer .footer-newsletter .tfs-newsletter .dropin-button:hover:not(:disabled) {
+  background-color: #c3aa7a;
+}
+
+@media (min-width: 600px) {
+  footer .footer-newsletter strong {
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  footer .footer-newsletter .tfs-newsletter {
+    max-width: 620px;
+    flex: 1;
+  }
+
+  footer .footer-newsletter .tfs-newsletter .tfsnewsletterdropin-newsletter-component__form {
+    flex-direction: row;
+    align-items: stretch;
+  }
+}

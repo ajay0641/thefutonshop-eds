@@ -52,6 +52,9 @@
         },
         {
           "...": "../blocks/commerce-*/_*.json#/definitions"
+        },
+        {
+          "...": "../blocks/tfs-newsletter/_*.json#/definitions"
         }
       ]
     },

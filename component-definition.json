@@ -571,6 +571,17 @@
               "type": "key-value-block"
             }
           }
+        },
+        {
+          "title": "TFS Newsletter",
+          "id": "tfs-newsletter",
+          "model": "tfs-newsletter",
+          "plugins": {
+            "da": {
+              "rows": 1,
+              "columns": 1
+            }
+          }
         }
       ]
     },
