@@ -31,6 +31,24 @@ fs.readdirSync('node_modules/@dropins', { withFileTypes: true }).forEach((file) 
   });
 });
 
+// Custom drop-ins published outside the @dropins scope (e.g. private npm scope)
+[
+  { npm: '@ajay0641/tfs-newsletter', dest: 'tfs-newsletter' },
+].forEach(({ npm, dest }) => {
+  if (!dependencies[npm]) {
+    return;
+  }
+  const source = path.join('node_modules', ...npm.split('/'));
+  if (!fs.existsSync(source)) {
+    console.warn(`Warning: custom drop-in not found: ${npm}`);
+    return;
+  }
+  fs.cpSync(source, path.join(dropinsDir, dest), {
+    recursive: true,
+    filter: (src) => (!src.endsWith('package.json')),
+  });
+});
+
 // Other files to copy
 [
   { from: '@adobe/magento-storefront-event-collector/dist/index.js', to: 'commerce-events-collector.js' },
