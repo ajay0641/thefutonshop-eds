@@ -8,6 +8,7 @@ export interface NewsletterComponentProps extends HTMLAttributes<HTMLDivElement>
     email?: string;
     loading?: boolean;
     emailError?: string | null;
+    successMessage?: string | null;
     onEmailChange?: (email: string) => void;
     onSubmit?: (email: string) => void;
 }
