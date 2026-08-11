@@ -1,0 +1,13 @@
+.tfs-product-slider {
+  width: 100%;
+}
+
+.tfs-product-slider .tfsproductslider-product-slider-component {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Ensure storefront content width alignment when nested in default sections */
+.tfs-product-slider-wrapper {
+  width: 100%;
+}
