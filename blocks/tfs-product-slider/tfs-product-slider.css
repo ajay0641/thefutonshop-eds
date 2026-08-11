@@ -3,6 +3,7 @@
 }
 
 .tfs-product-slider .tfsproductslider-product-slider-component {
+  position: relative;
   width: 100%;
   max-width: 100%;
 }
@@ -10,4 +11,141 @@
 /* Ensure storefront content width alignment when nested in default sections */
 .tfs-product-slider-wrapper {
   width: 100%;
+}
+
+/* Header row holds the prev/next nav at the top-right */
+.tfs-product-slider .tfsproductslider-product-slider-component__header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.tfs-product-slider .tfsproductslider-product-slider-component__nav {
+  display: flex;
+  gap: 8px;
+}
+
+.tfs-product-slider .tfsproductslider-product-slider-component__nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #d9d9d1;
+  border-radius: 50%;
+  background: #fff;
+  color: #333;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.tfs-product-slider .tfsproductslider-product-slider-component__nav-btn:hover {
+  background: #5f665a;
+  color: #fff;
+}
+
+.tfs-product-slider .tfsproductslider-product-slider-component__nav-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Horizontal, scroll-snapping track */
+.tfs-product-slider .tfsproductslider-product-slider-component__track {
+  display: flex;
+  gap: 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.tfs-product-slider .tfsproductslider-product-slider-component__track::-webkit-scrollbar {
+  display: none;
+}
+
+.tfs-product-slider .tfsproductslider-product-slider-component__slide {
+  flex: 0 0 calc((100% - 60px) / 4);
+  scroll-snap-align: start;
+}
+
+/* Product card */
+.tfs-product-slider .tfsproductslider-product-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  color: #000;
+  text-decoration: none;
+}
+
+.tfs-product-slider .tfsproductslider-product-card__media {
+  line-height: 0;
+}
+
+.tfs-product-slider .tfsproductslider-product-card__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 377 / 283;
+  object-fit: cover;
+  transition: opacity 0.3s ease;
+}
+
+.tfs-product-slider .tfsproductslider-product-card:hover .tfsproductslider-product-card__image {
+  opacity: 0.9;
+}
+
+.tfs-product-slider .tfsproductslider-product-card__body {
+  padding: 14px 4px 0;
+  text-align: left;
+}
+
+.tfs-product-slider .tfsproductslider-product-card__title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #000;
+}
+
+.tfs-product-slider .tfsproductslider-product-card__pricing {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tfs-product-slider .tfsproductslider-product-card__price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tfs-product-slider .tfsproductslider-product-card__from {
+  color: #767676;
+  font-size: 13px;
+}
+
+.tfs-product-slider .tfsproductslider-product-card__final {
+  color: #5f665a;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* ---------- Tablet ---------- */
+@media (max-width: 900px) {
+  .tfs-product-slider .tfsproductslider-product-slider-component__slide {
+    flex-basis: calc((100% - 20px) / 2);
+  }
+}
+
+/* ---------- Mobile ---------- */
+@media (max-width: 600px) {
+  .tfs-product-slider .tfsproductslider-product-slider-component__slide {
+    flex-basis: 80%;
+  }
 }
