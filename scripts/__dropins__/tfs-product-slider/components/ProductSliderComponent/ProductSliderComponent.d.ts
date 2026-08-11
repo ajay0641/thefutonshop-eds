@@ -1,6 +1,7 @@
 import { FunctionComponent } from 'preact';
 import { HTMLAttributes } from 'preact/compat';
 import { ProductSliderItem } from '../../data/models';
+import { ProductClickTarget } from '../ProductCard';
 
 export interface ProductSliderComponentProps extends HTMLAttributes<HTMLDivElement> {
     title?: string;
@@ -15,7 +16,9 @@ export interface ProductSliderComponentProps extends HTMLAttributes<HTMLDivEleme
     reviewsLabel?: string;
     reviewLabel?: string;
     skeletonCount?: number;
-    onProductClick?: (product: ProductSliderItem) => void;
+    onProductClick?: (product: ProductSliderItem, target: ProductClickTarget) => void;
+    onProductImageClick?: (product: ProductSliderItem) => void;
+    onProductNameClick?: (product: ProductSliderItem) => void;
 }
 export declare const ProductSliderComponent: FunctionComponent<ProductSliderComponentProps>;
 //# sourceMappingURL=ProductSliderComponent.d.ts.map

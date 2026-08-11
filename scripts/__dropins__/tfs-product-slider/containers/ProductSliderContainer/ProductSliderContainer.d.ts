@@ -14,7 +14,10 @@ export interface ProductSliderContainerProps extends HTMLAttributes<HTMLDivEleme
     onError?: (payload: {
         message: string;
     }) => void;
-    onProductClick?: (product: ProductSliderItem) => void;
+    /** Shared handler for image or name clicks (`target` is which one). */
+    onProductClick?: (product: ProductSliderItem, target: 'image' | 'name') => void;
+    onProductImageClick?: (product: ProductSliderItem) => void;
+    onProductNameClick?: (product: ProductSliderItem) => void;
 }
 export declare const ProductSliderContainer: Container<ProductSliderContainerProps>;
 //# sourceMappingURL=ProductSliderContainer.d.ts.map
