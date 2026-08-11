@@ -44,7 +44,9 @@ Events are emitted by the drop-in (not the block wrapper):
 2. **Form Display**: Renders email input and subscribe button (labels from drop-in defaults or `placeholders/newsletter.json` when present)
 3. **Validation**: Client-side required/email format checks before calling the API
 4. **Subscribe**: Calls `subscribeToNewsletter` (GraphQL `subscribeEmailToNewsletter`)
-5. **Success / Error**: Drop-in shows validation or API errors; emits `newsletter/subscribed` or `newsletter/error` on the event bus
+5. **Success / Error**: On success the form shows a status line under the email field (`Thank you for your subscription.` by default) and emits `newsletter/subscribed`. Validation/API failures use the error line and `newsletter/error`.
+
+> **Note:** After upgrading `@ajay0641/tfs-newsletter` with npm, run `npm run install:dropins` so `scripts/__dropins__/tfs-newsletter` matches `node_modules`. The browser loads the drop-in from `__dropins__` via the import map, not from `node_modules` directly.
 
 ### Error Handling
 

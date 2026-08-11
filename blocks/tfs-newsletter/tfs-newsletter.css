@@ -8,6 +8,18 @@
   max-width: 28rem;
 }
 
+.tfs-newsletter .tfsnewsletterdropin-newsletter-component__success {
+  margin: 6px 0 0;
+  color: var(--color-positive-700, #1b7f3a);
+  font: var(--type-body-2-default-font, 400 0.875rem/1.25 system-ui, sans-serif);
+}
+
+.tfs-newsletter .tfsnewsletterdropin-newsletter-component__error {
+  margin: 6px 0 0;
+  color: var(--color-alert-800, #c81e1e);
+  font: var(--type-body-2-default-font, 400 0.875rem/1.25 system-ui, sans-serif);
+}
+
 /* ---------- Footer band (section classed by footer.js) ---------- */
 footer .footer-newsletter {
   background-color: #5f665a;
@@ -15,12 +27,11 @@ footer .footer-newsletter {
   padding: 22px 0;
   display: flex;
   justify-content: center;
-  align-items: center;
   gap: 20px;
 }
 
 footer .footer-newsletter p {
-  margin: 0;
+  margin: 4px 0 0;
 }
 
 footer .footer-newsletter strong {
@@ -89,6 +100,13 @@ footer .footer-newsletter .tfs-newsletter .dropin-input:focus {
 footer .footer-newsletter .tfs-newsletter .tfsnewsletterdropin-newsletter-component__error {
   margin: 6px 0 0;
   color: #f5d0d0;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+footer .footer-newsletter .tfs-newsletter .tfsnewsletterdropin-newsletter-component__success {
+  margin: 6px 0 0;
+  color: #d8f0d8;
   font-family: inherit;
   font-size: 13px;
 }

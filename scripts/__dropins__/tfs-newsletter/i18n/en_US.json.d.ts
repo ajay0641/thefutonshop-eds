@@ -5,7 +5,8 @@ declare const _default: {
       "submitLabel": "Subscribe",
       "submittingLabel": "Subscribing…",
       "invalidEmail": "Please enter a valid email address.",
-      "requiredEmail": "Email is required."
+      "requiredEmail": "Email is required.",
+      "successMessage": "Thank you for your subscription."
     }
   }
 }
