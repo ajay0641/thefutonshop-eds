@@ -582,6 +582,16 @@
               "columns": 1
             }
           }
+        },
+        {
+          "title": "TFS Product Slider",
+          "id": "tfs-product-slider",
+          "model": "tfs-product-slider",
+          "plugins": {
+            "da": {
+              "type": "key-value-block"
+            }
+          }
         }
       ]
     },
