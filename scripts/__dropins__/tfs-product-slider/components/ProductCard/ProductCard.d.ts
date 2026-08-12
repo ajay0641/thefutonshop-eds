@@ -9,12 +9,18 @@ export interface ProductCardProps extends HTMLAttributes<HTMLDivElement> {
     saveLabel?: string;
     reviewsLabel?: string;
     reviewLabel?: string;
+    addToCartLabel?: string;
     /** Fires for image or name click (with which target was used). */
     onProductClick?: (product: ProductSliderItem, target: ProductClickTarget) => void;
     /** Image-only click (also receives `onProductClick` with target "image"). */
     onProductImageClick?: (product: ProductSliderItem) => void;
     /** Name-only click (also receives `onProductClick` with target "name"). */
     onProductNameClick?: (product: ProductSliderItem) => void;
+    /**
+     * Add-to-cart UI hook only — drop-in does not call cart GraphQL.
+     * Storefront should call `addProductsToCart` from `@dropins/storefront-cart`.
+     */
+    onAddToCart?: (product: ProductSliderItem) => void;
 }
 export declare const ProductCard: FunctionComponent<ProductCardProps>;
 //# sourceMappingURL=ProductCard.d.ts.map
