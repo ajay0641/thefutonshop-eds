@@ -42,19 +42,19 @@
       },
       {
         "component": "text",
-        "name": "filter-attribute",
-        "label": "Filter Attribute",
+        "name": "attribute",
+        "label": "Attribute",
         "valueType": "string",
         "value": "isNew",
-        "description": "Catalog Service filter attribute (default isNew)"
+        "description": "Catalog Service productSearch filter attribute. Examples: isNew, categoryIds"
       },
       {
         "component": "text",
-        "name": "filter-eq",
-        "label": "Filter Equals",
+        "name": "eq",
+        "label": "Equals",
         "valueType": "string",
         "value": "1",
-        "description": "Filter equality value (default 1)"
+        "description": "Filter equality value. Examples: 1 (for isNew), 6 (for categoryIds)"
       }
     ]
   }],
