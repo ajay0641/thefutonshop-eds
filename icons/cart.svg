@@ -1,5 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="26.318" height="25.6" viewBox="0 0 26.318 25.6">
-  <g id="shopping-cart-simple" transform="translate(-0.185 -2.938)">
-    <path id="Union_8" data-name="Union 8" d="M22216.2,22410.635a2.75,2.75,0,1,1,2.75,2.75A2.757,2.757,0,0,1,22216.2,22410.635Zm1.5,0a1.248,1.248,0,1,0,1.248-1.248A1.245,1.245,0,0,0,22217.7,22410.635Zm-14.5,0a2.751,2.751,0,1,1,2.75,2.75A2.754,2.754,0,0,1,22203.2,22410.635Zm1.5,0a1.249,1.249,0,1,0,1.248-1.248A1.245,1.245,0,0,0,22204.7,22410.635Zm13.078-4.623h-11.137a2.594,2.594,0,0,1-2.492-1.9l-4.2-14.7a.185.185,0,0,0-.174-.131h-1.951a.751.751,0,1,1,0-1.5h1.951a1.7,1.7,0,0,1,1.615,1.221l.979,3.426h20.271a.752.752,0,0,1,.721.957l-3.066,10.732a2.6,2.6,0,0,1-2.5,1.891Zm.006-1.5a1.091,1.091,0,0,0,1.063-.8l2.795-9.777h-18.848l2.795,9.771a1.1,1.1,0,0,0,1.063.8Z" transform="translate(-22196.879 -22384.848)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30">
+  <g id="shopping-cart-simple" transform="translate(-0.066 0.212)">
+    <rect id="Rectangle_22" data-name="Rectangle 22" width="30" height="30" transform="translate(0.066 -0.212)" fill="none"/>
+    <circle id="Ellipse_2" data-name="Ellipse 2" cx="2" cy="2" r="2" transform="translate(7.066 23.788)" fill="none" stroke="#000" stroke-width="1.5"/>
+    <circle id="Ellipse_3" data-name="Ellipse 3" cx="2" cy="2" r="2" transform="translate(20.066 23.788)" fill="none" stroke="#000" stroke-width="1.5"/>
+    <path id="Path_34" data-name="Path 34" d="M11.983,36.645H32.818L29.752,47.376a1.847,1.847,0,0,1-1.788,1.347H16.838a1.847,1.847,0,0,1-1.788-1.347l-4.2-14.7A.929.929,0,0,0,9.951,32H8" transform="translate(-7.063 -28.309)" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/>
   </g>
 </svg>

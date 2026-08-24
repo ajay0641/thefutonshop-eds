@@ -101,16 +101,21 @@ export default async function decorate(block) {
   /* ---------- Utility bar (top band) ---------- */
   const utilityBar = document.createElement('div');
   utilityBar.className = 'nav-utility';
+  const utilityRight = document.createElement('div');
+  utilityRight.className = 'nav-utility-right';
   if (utilitySection) {
     const lists = utilitySection.querySelectorAll(':scope .default-content-wrapper > ul, :scope > ul');
     const [promoList, contactList] = lists;
     const left = document.createElement('div');
     left.className = 'nav-utility-left';
     if (promoList) left.append(promoList);
-    const right = document.createElement('div');
-    right.className = 'nav-utility-right';
-    if (contactList) right.append(contactList);
-    utilityBar.append(left, right);
+    if (contactList) {
+      // Add the map-pin icon to the "Our Stores" link
+      const storesLink = [...contactList.querySelectorAll('a')].find((a) => /our stores/i.test(a.textContent));
+      if (storesLink) storesLink.classList.add('nav-stores-link');
+      utilityRight.append(contactList);
+    }
+    utilityBar.append(left, utilityRight);
     utilitySection.remove();
   }
 
@@ -133,18 +138,34 @@ export default async function decorate(block) {
     if (child.classList && child.classList.contains('section')) child.remove();
   });
 
-  /* ---------- Tools (search / wishlist / cart / account) ---------- */
+  /* ---------- Live Chat link (left of main bar) ---------- */
+  const liveChat = document.createRange().createContextualFragment(`
+    <a class="nav-live-chat" href="https://www.thefutonshop.com/contact">
+      <span class="nav-live-chat-icon" aria-hidden="true"></span>
+      <span class="nav-live-chat-label">Live Chat</span>
+    </a>
+  `);
+
+  /* ---------- Tools (wishlist / cart / account) — shown in utility bar ---------- */
   const navTools = document.createElement('div');
   navTools.className = 'nav-tools';
+  utilityRight.append(navTools);
+
+  /* ---------- Search box (visible input, right of logo) ---------- */
+  const navSearch = document.createElement('div');
+  navSearch.className = 'nav-search';
 
   /* ---------- Category nav band (tfs-menu dropin) ---------- */
   const navSections = document.createElement('div');
   navSections.className = 'nav-sections';
 
-  /* ---------- Assemble main bar (logo + search + tools) ---------- */
+  /* ---------- Assemble main bar (live chat + logo + search) ---------- */
   const mainBar = document.createElement('div');
   mainBar.className = 'nav-main';
-  mainBar.append(navBrand, navTools);
+  const mainBarLeft = document.createElement('div');
+  mainBarLeft.className = 'nav-main-left';
+  mainBarLeft.append(liveChat);
+  mainBar.append(mainBarLeft, navBrand, navSearch);
 
   nav.append(utilityBar, mainBar, navSections);
 
@@ -295,128 +316,129 @@ export default async function decorate(block) {
     previousCartQuantity = totalQuantity;
   }, { eager: true });
 
-  /** Search */
+  /** Search — visible inline box in the main bar (matches the source) */
   const searchFragment = document.createRange().createContextualFragment(`
-  <div class="search-wrapper nav-tools-wrapper">
-    <button type="button" class="nav-search-button">Search</button>
-    <div class="nav-search-input nav-search-panel nav-tools-panel">
-      <form id="search-bar-form"></form>
-      <div class="search-bar-result" style="display: none;"></div>
+    <div class="search-wrapper">
+      <form id="search-bar-form" role="search" aria-label="Search">
+        <input type="search" name="search" class="nav-search-field" placeholder="Search Keywords..." autocomplete="off" aria-label="Search Keywords">
+        <button type="submit" class="nav-search-button" aria-label="Search"></button>
+      </form>
+      <div class="nav-search-panel search-bar-result" style="display: none;"></div>
     </div>
-  </div>
   `);
 
-  navTools.append(searchFragment);
+  navSearch.append(searchFragment);
 
-  const searchPanel = navTools.querySelector('.nav-search-panel');
-  const searchButton = navTools.querySelector('.nav-search-button');
-  const searchForm = searchPanel.querySelector('#search-bar-form');
-  const searchResult = searchPanel.querySelector('.search-bar-result');
+  const searchForm = navSearch.querySelector('#search-bar-form');
+  const searchField = navSearch.querySelector('.nav-search-field');
+  const searchResult = navSearch.querySelector('.search-bar-result');
+  let searchInitialized = false;
 
-  async function toggleSearch(state) {
+  // Submit navigates to the results page regardless of dropin state.
+  searchForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const query = searchField.value;
+    if (query.length) {
+      window.location.href = `${rootLink('/search')}?q=${encodeURIComponent(query)}`;
+    }
+  });
+
+  // Lazily attach the autocomplete popover the first time the field is used.
+  async function initSearch() {
+    if (searchInitialized) return;
+    searchInitialized = true;
     const pageSize = 4;
 
-    if (state) {
-      await withLoadingState(searchPanel, searchButton, async () => {
-        await import('../../scripts/initializers/search.js');
+    await import('../../scripts/initializers/search.js');
 
-        // Load search components in parallel
-        const [
-          { search },
-          { render },
-          { SearchResults },
-          { provider: UI, Input, Button },
-        ] = await Promise.all([
-          import('@dropins/storefront-product-discovery/api.js'),
-          import('@dropins/storefront-product-discovery/render.js'),
-          import('@dropins/storefront-product-discovery/containers/SearchResults.js'),
-          import('@dropins/tools/components.js'),
-          import('@dropins/tools/lib.js'),
-        ]);
+    // Load search components in parallel
+    const [
+      { search },
+      { render },
+      { SearchResults },
+      { provider: UI, Button },
+    ] = await Promise.all([
+      import('@dropins/storefront-product-discovery/api.js'),
+      import('@dropins/storefront-product-discovery/render.js'),
+      import('@dropins/storefront-product-discovery/containers/SearchResults.js'),
+      import('@dropins/tools/components.js'),
+      import('@dropins/tools/lib.js'),
+    ]);
 
-        render.render(SearchResults, {
-          skeletonCount: pageSize,
-          scope: 'popover',
-          routeProduct: ({ urlKey, sku }) => getProductLink(urlKey, sku),
-          onSearchResult: (results) => {
-            searchResult.style.display = results.length > 0 ? 'block' : 'none';
-          },
-          slots: {
-            ProductImage: (ctx) => {
-              const { product, defaultImageProps } = ctx;
-              const anchorWrapper = document.createElement('a');
-              anchorWrapper.href = getProductLink(product.urlKey, product.sku);
+    render.render(SearchResults, {
+      skeletonCount: pageSize,
+      scope: 'popover',
+      routeProduct: ({ urlKey, sku }) => getProductLink(urlKey, sku),
+      onSearchResult: (results) => {
+        searchResult.style.display = results.length > 0 ? 'block' : 'none';
+      },
+      slots: {
+        ProductImage: (ctx) => {
+          const { product, defaultImageProps } = ctx;
+          const anchorWrapper = document.createElement('a');
+          anchorWrapper.href = getProductLink(product.urlKey, product.sku);
 
-              tryRenderAemAssetsImage(ctx, {
-                alias: product.sku,
-                imageProps: defaultImageProps,
-                wrapper: anchorWrapper,
-                params: {
-                  width: defaultImageProps.width,
-                  height: defaultImageProps.height,
-                },
-              });
+          tryRenderAemAssetsImage(ctx, {
+            alias: product.sku,
+            imageProps: defaultImageProps,
+            wrapper: anchorWrapper,
+            params: {
+              width: defaultImageProps.width,
+              height: defaultImageProps.height,
             },
-            Footer: async (ctx) => {
-              // View all results button
-              const viewAllResultsWrapper = document.createElement('div');
+          });
+        },
+        Footer: async (ctx) => {
+          // View all results button
+          const viewAllResultsWrapper = document.createElement('div');
 
-              const viewAllResultsButton = await UI.render(Button, {
-                children: labels.Global?.SearchViewAll,
-                variant: 'secondary',
-                href: rootLink('/search'),
-              })(viewAllResultsWrapper);
+          const viewAllResultsButton = await UI.render(Button, {
+            children: labels.Global?.SearchViewAll,
+            variant: 'secondary',
+            href: rootLink('/search'),
+          })(viewAllResultsWrapper);
 
-              ctx.appendChild(viewAllResultsWrapper);
+          ctx.appendChild(viewAllResultsWrapper);
 
-              ctx.onChange((next) => {
-                viewAllResultsButton?.setProps((prev) => ({
-                  ...prev,
-                  href: `${rootLink('/search')}?q=${encodeURIComponent(next.variables?.phrase || '')}`,
-                }));
-              });
-            },
-          },
-        })(searchResult);
+          ctx.onChange((next) => {
+            viewAllResultsButton?.setProps((prev) => ({
+              ...prev,
+              href: `${rootLink('/search')}?q=${encodeURIComponent(next.variables?.phrase || '')}`,
+            }));
+          });
+        },
+      },
+    })(searchResult);
 
-        searchForm.addEventListener('submit', (e) => {
-          e.preventDefault();
-          const query = e.target.search.value;
-          if (query.length) {
-            window.location.href = `${rootLink('/search')}?q=${encodeURIComponent(query)}`;
-          }
-        });
+    // Drive the dropin autocomplete from the real input's value.
+    const runSearch = (phrase) => {
+      if (!phrase) {
+        search(null, { scope: 'popover' });
+        searchResult.style.display = 'none';
+        return;
+      }
+      if (phrase.length < 3) return;
+      search({
+        phrase,
+        pageSize,
+        filter: [
+          { attribute: 'visibility', in: ['Search', 'Catalog, Search'] },
+        ],
+      }, { scope: 'popover' });
+    };
 
-        UI.render(Input, {
-          name: 'search',
-          placeholder: labels.Global?.Search,
-          onValue: (phrase) => {
-            if (!phrase) {
-              search(null, { scope: 'popover' });
-              return;
-            }
-
-            if (phrase.length < 3) {
-              return;
-            }
-
-            search({
-              phrase,
-              pageSize,
-              filter: [
-                { attribute: 'visibility', in: ['Search', 'Catalog, Search'] },
-              ],
-            }, { scope: 'popover' });
-          },
-        })(searchForm);
-      });
-    }
-
-    togglePanel(searchPanel, state);
-    if (state) searchForm?.querySelector('input')?.focus();
+    searchField.addEventListener('input', () => runSearch(searchField.value.trim()));
+    if (searchField.value.trim()) runSearch(searchField.value.trim());
   }
 
-  searchButton.addEventListener('click', () => toggleSearch(!searchPanel.classList.contains('nav-tools-panel--show')));
+  searchField.addEventListener('focus', initSearch);
+
+  // Close the autocomplete popover when clicking outside the search box
+  document.addEventListener('click', (e) => {
+    if (!navSearch.contains(e.target)) {
+      searchResult.style.display = 'none';
+    }
+  });
 
   // Close panels when clicking outside
   document.addEventListener('click', (e) => {
@@ -437,10 +459,6 @@ export default async function decorate(block) {
 
     if (shouldCloseMiniCart) {
       toggleMiniCart(false);
-    }
-
-    if (!searchPanel.contains(e.target) && !searchButton.contains(e.target)) {
-      toggleSearch(false);
     }
   });
 
