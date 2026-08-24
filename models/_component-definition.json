@@ -54,6 +54,9 @@
           "...": "../blocks/commerce-*/_*.json#/definitions"
         },
         {
+          "...": "../blocks/tfs-menu/_*.json#/definitions"
+        },
+        {
           "...": "../blocks/tfs-newsletter/_*.json#/definitions"
         },
         {

@@ -527,6 +527,19 @@
     ]
   },
   {
+    "id": "tfs-menu",
+    "fields": [
+      {
+        "component": "text",
+        "name": "parent-id",
+        "label": "Parent Category ID",
+        "valueType": "string",
+        "value": "2",
+        "description": "Catalog Service category ID for the menu root (default 2 = store root)"
+      }
+    ]
+  },
+  {
     "id": "tfs-product-slider",
     "fields": [
       {
@@ -559,19 +572,19 @@
       },
       {
         "component": "text",
-        "name": "filter-attribute",
-        "label": "Filter Attribute",
+        "name": "attribute",
+        "label": "Attribute",
         "valueType": "string",
         "value": "isNew",
-        "description": "Catalog Service filter attribute (default isNew)"
+        "description": "Catalog Service productSearch filter attribute. Examples: isNew, categoryIds"
       },
       {
         "component": "text",
-        "name": "filter-eq",
-        "label": "Filter Equals",
+        "name": "eq",
+        "label": "Equals",
         "valueType": "string",
         "value": "1",
-        "description": "Filter equality value (default 1)"
+        "description": "Filter equality value. Examples: 1 (for isNew), 6 (for categoryIds)"
       }
     ]
   }

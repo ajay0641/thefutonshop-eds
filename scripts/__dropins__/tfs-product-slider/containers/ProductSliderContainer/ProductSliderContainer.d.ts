@@ -18,6 +18,18 @@ export interface ProductSliderContainerProps extends HTMLAttributes<HTMLDivEleme
     onProductClick?: (product: ProductSliderItem, target: 'image' | 'name') => void;
     onProductImageClick?: (product: ProductSliderItem) => void;
     onProductNameClick?: (product: ProductSliderItem) => void;
+    /**
+     * Add-to-cart UI hook only (no cart GraphQL in this drop-in).
+     * Storefront should call:
+     *   addProductsToCart([{ sku: product.sku, quantity: 1 }])
+     * from `@dropins/storefront-cart`.
+     */
+    onAddToCart?: (product: ProductSliderItem) => void;
+    /**
+     * Add-to-wishlist UI hook only (no wishlist GraphQL in this drop-in).
+     * Storefront should wire `@dropins/storefront-wishlist` (or equivalent).
+     */
+    onAddToWishlist?: (product: ProductSliderItem) => void;
 }
 export declare const ProductSliderContainer: Container<ProductSliderContainerProps>;
 //# sourceMappingURL=ProductSliderContainer.d.ts.map

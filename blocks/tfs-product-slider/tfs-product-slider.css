@@ -178,6 +178,119 @@
   background: linear-gradient(135deg, #ece9e3, #f7f5f1);
 }
 
+.tfs-product-slider .tfsproductslider-product-card__media-wrap {
+  position: relative;
+}
+
+/* Overlay actions — cart + wishlist (drop-in v1.0.3+ uses __actions / __action-btn) */
+.tfs-product-slider .tfsproductslider-product-card__actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.tfs-product-slider .tfsproductslider-product-card__action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid rgb(0 0 0 / 8%);
+  border-radius: 50%;
+  background: rgb(255 255 255 / 94%);
+  color: #1a1a1a;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 14%);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tfs-product-slider .tfsproductslider-product-card__action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.tfs-product-slider .tfsproductslider-product-card__action-btn:focus-visible {
+  outline: 2px solid var(--tfs-card-sale, #6b2c28);
+  outline-offset: 2px;
+}
+
+.tfs-product-slider .tfsproductslider-product-card__action-btn:hover:not(:disabled, .is-loading) {
+  background: #5f665a;
+  border-color: #5f665a;
+  color: #fff;
+  transform: scale(1.05);
+  box-shadow: 0 3px 12px rgb(0 0 0 / 18%);
+}
+
+.tfs-product-slider .tfsproductslider-product-card__action-btn-icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+/* Wishlist active (filled) state — mirrors PLP WishlistToggle */
+.tfs-product-slider .tfsproductslider-product-card__wishlist.is-active {
+  background: #5f665a;
+  border-color: #5f665a;
+  color: #fff;
+}
+
+.tfs-product-slider .tfsproductslider-product-card__wishlist.is-active .tfsproductslider-product-card__action-btn-icon {
+  fill: currentcolor;
+}
+
+/* Loading spinner while cart / wishlist request runs */
+.tfs-product-slider .tfsproductslider-product-card__action-btn.is-loading {
+  position: relative;
+  pointer-events: none;
+  cursor: wait;
+  color: transparent;
+}
+
+.tfs-product-slider .tfsproductslider-product-card__action-btn.is-loading .tfsproductslider-product-card__action-btn-icon {
+  opacity: 0;
+}
+
+.tfs-product-slider .tfsproductslider-product-card__action-btn.is-loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgb(95 102 90 / 25%);
+  border-top-color: #5f665a;
+  border-radius: 50%;
+  animation: tfs-product-slider-atc-spin 0.7s linear infinite;
+}
+
+/* Legacy class aliases (older drop-in builds) */
+.tfs-product-slider .tfsproductslider-product-card__atc {
+  position: static;
+}
+
+.tfs-product-slider .tfsproductslider-product-card__atc-icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+@keyframes tfs-product-slider-atc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Body — left-aligned stack */
 .tfs-product-slider .tfsproductslider-product-card__body {
   display: flex;
