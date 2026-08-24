@@ -2,7 +2,12 @@
 import { events } from '@dropins/tools/event-bus.js';
 
 import { tryRenderAemAssetsImage } from '@dropins/tools/lib/aem/assets.js';
-import { getMetadata } from '../../scripts/aem.js';
+import {
+  getMetadata,
+  buildBlock,
+  decorateBlock,
+  loadBlock,
+} from '../../scripts/aem.js';
 import { loadFragment } from '../fragment/fragment.js';
 import { fetchPlaceholders, getProductLink, rootLink } from '../../scripts/commerce.js';
 
@@ -19,143 +24,55 @@ const overlay = document.createElement('div');
 overlay.classList.add('overlay');
 document.querySelector('header').insertAdjacentElement('afterbegin', overlay);
 
-function closeOnEscape(e) {
-  if (e.code === 'Escape') {
-    const nav = document.getElementById('nav');
-    const navSections = nav.querySelector('.nav-sections');
-    if (!navSections) return;
-    const navSectionExpanded = navSections.querySelector('[aria-expanded="true"]');
-    if (navSectionExpanded && isDesktop.matches) {
-      toggleAllNavSections(navSections);
-      overlay.classList.remove('show');
-      navSectionExpanded.focus();
-    } else if (!isDesktop.matches) {
-      toggleMenu(nav, navSections);
-      overlay.classList.remove('show');
-      nav.querySelector('button').focus();
-      const navWrapper = document.querySelector('.nav-wrapper');
-      navWrapper.classList.remove('active');
-    }
-  }
-}
+/**
+ * Loads the nav fragment. Dual-fetch: local working copy first (aem up serves
+ * /content/nav.plain.html), then the DA/EDS nav doc referenced in metadata.
+ * @returns {Promise<HTMLElement>} the fragment root
+ */
+async function loadNavFragment() {
+  const navMeta = getMetadata('nav');
+  const navPath = navMeta ? new URL(navMeta, window.location).pathname : '/nav';
 
-function closeOnFocusLost(e) {
-  const nav = e.currentTarget;
-  if (!nav.contains(e.relatedTarget)) {
-    const navSections = nav.querySelector('.nav-sections');
-    if (!navSections) return;
-    const navSectionExpanded = navSections.querySelector('[aria-expanded="true"]');
-    if (navSectionExpanded && isDesktop.matches) {
-      toggleAllNavSections(navSections, false);
-      overlay.classList.remove('show');
-    } else if (!isDesktop.matches) {
-      toggleMenu(nav, navSections, true);
-    }
-  }
-}
+  // local dev / aem up
+  let fragment = await loadFragment('/content/nav');
+  if (fragment) return fragment;
 
-function openOnKeydown(e) {
-  const focused = document.activeElement;
-  const isNavDrop = focused.className === 'nav-drop';
-  if (isNavDrop && (e.code === 'Enter' || e.code === 'Space')) {
-    const dropExpanded = focused.getAttribute('aria-expanded') === 'true';
-    toggleAllNavSections(focused.closest('.nav-sections'));
-    focused.setAttribute('aria-expanded', dropExpanded ? 'false' : 'true');
-  }
-}
-
-function focusNavSection() {
-  document.activeElement.addEventListener('keydown', openOnKeydown);
+  // DA / EDS production
+  fragment = await loadFragment(navPath);
+  return fragment;
 }
 
 /**
- * Toggles all nav sections
- * @param {Element} sections The container element
- * @param {Boolean} expanded Whether the element should be expanded or collapsed
+ * Normalizes a fragment logo <picture> to absolute media-da paths so the image
+ * resolves under aem up regardless of the fragment base.
+ * @param {Element} picture
  */
-function toggleAllNavSections(sections, expanded = false) {
-  if (!sections) return;
-  sections
-    .querySelectorAll('.nav-sections .default-content-wrapper > ul > li')
-    .forEach((section) => {
-      section.setAttribute('aria-expanded', expanded);
-    });
-}
-
-/**
- * Toggles the entire nav
- * @param {Element} nav The container element
- * @param {Element} navSections The nav sections within the container element
- * @param {*} forceExpanded Optional param to force nav expand behavior when not null
- */
-function toggleMenu(nav, navSections, forceExpanded = null) {
-  const expanded = forceExpanded !== null ? !forceExpanded : nav.getAttribute('aria-expanded') === 'true';
-  const button = nav.querySelector('.nav-hamburger button');
-  document.body.style.overflowY = expanded || isDesktop.matches ? '' : 'hidden';
-  nav.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-  toggleAllNavSections(navSections, expanded || isDesktop.matches ? 'false' : 'true');
-  button.setAttribute('aria-label', expanded ? 'Open navigation' : 'Close navigation');
-  // enable nav dropdown keyboard accessibility
-  if (navSections) {
-    const navDrops = navSections.querySelectorAll('.nav-drop');
-    if (isDesktop.matches) {
-      navDrops.forEach((drop) => {
-        if (!drop.hasAttribute('tabindex')) {
-          drop.setAttribute('tabindex', 0);
-          drop.addEventListener('focus', focusNavSection);
-        }
-      });
-    } else {
-      navDrops.forEach((drop) => {
-        drop.classList.remove('active');
-        drop.removeAttribute('tabindex');
-        drop.removeEventListener('focus', focusNavSection);
-      });
-    }
-  }
-
-  // enable menu collapse on escape keypress
-  if (!expanded || isDesktop.matches) {
-    // collapse menu on escape press
-    window.addEventListener('keydown', closeOnEscape);
-    // collapse menu on focus lost
-    nav.addEventListener('focusout', closeOnFocusLost);
-  } else {
-    window.removeEventListener('keydown', closeOnEscape);
-    nav.removeEventListener('focusout', closeOnFocusLost);
+function normalizeLogoPaths(picture) {
+  if (!picture) return;
+  picture.querySelectorAll('source').forEach((source) => {
+    const srcset = source.getAttribute('srcset');
+    if (srcset && srcset.startsWith('media-da/')) source.setAttribute('srcset', `/${srcset}`);
+  });
+  const img = picture.querySelector('img');
+  if (img) {
+    const src = img.getAttribute('src');
+    if (src && src.startsWith('media-da/')) img.setAttribute('src', `/${src}`);
   }
 }
 
-const subMenuHeader = document.createElement('div');
-subMenuHeader.classList.add('submenu-header');
-subMenuHeader.innerHTML = '<h5 class="back-link">All Categories</h5><hr />';
-
 /**
- * Sets up the submenu
- * @param {navSection} navSection The nav section element
+ * Builds and loads the tfs-menu Commerce dropin block for the category nav row.
+ * The dropin requires a `.tfs-menu` block element, which cannot live in the
+ * class-free nav fragment, so it is constructed here.
+ * @param {Element} container the category-nav band element
  */
-function setupSubmenu(navSection) {
-  if (navSection.querySelector('ul')) {
-    let label;
-    if (navSection.childNodes.length) {
-      [label] = navSection.childNodes;
-    }
-
-    const submenu = navSection.querySelector('ul');
-    const wrapper = document.createElement('div');
-    const header = subMenuHeader.cloneNode(true);
-    const title = document.createElement('h6');
-    title.classList.add('submenu-title');
-    title.textContent = label.textContent;
-
-    wrapper.classList.add('submenu-wrapper');
-    wrapper.appendChild(header);
-    wrapper.appendChild(title);
-    wrapper.appendChild(submenu.cloneNode(true));
-
-    navSection.appendChild(wrapper);
-    navSection.removeChild(submenu);
-  }
+async function buildCategoryMenu(container) {
+  const block = buildBlock('tfs-menu', '');
+  const wrapper = document.createElement('div');
+  wrapper.append(block);
+  container.append(wrapper);
+  decorateBlock(block);
+  await loadBlock(block);
 }
 
 /**
@@ -170,57 +87,66 @@ export default async function decorate(block) {
   }
 
   // load nav as fragment
-  const navMeta = getMetadata('nav');
-  const navPath = navMeta ? new URL(navMeta, window.location).pathname : '/nav';
-  const fragment = await loadFragment(navPath);
+  const fragment = await loadNavFragment();
 
   // decorate nav DOM
   block.textContent = '';
   const nav = document.createElement('nav');
   nav.id = 'nav';
-  while (fragment.firstElementChild) nav.append(fragment.firstElementChild);
+  while (fragment && fragment.firstElementChild) nav.append(fragment.firstElementChild);
 
-  const classes = ['brand', 'sections', 'tools'];
-  classes.forEach((c, i) => {
-    const section = nav.children[i];
-    if (section) section.classList.add(`nav-${c}`);
+  // Fragment sections in order: 0 = logo, 1 = utility bar (2 lists), 2 = menu marker
+  const [brandSection, utilitySection] = nav.children;
+
+  /* ---------- Utility bar (top band) ---------- */
+  const utilityBar = document.createElement('div');
+  utilityBar.className = 'nav-utility';
+  if (utilitySection) {
+    const lists = utilitySection.querySelectorAll(':scope .default-content-wrapper > ul, :scope > ul');
+    const [promoList, contactList] = lists;
+    const left = document.createElement('div');
+    left.className = 'nav-utility-left';
+    if (promoList) left.append(promoList);
+    const right = document.createElement('div');
+    right.className = 'nav-utility-right';
+    if (contactList) right.append(contactList);
+    utilityBar.append(left, right);
+    utilitySection.remove();
+  }
+
+  /* ---------- Brand / logo ---------- */
+  const navBrand = document.createElement('div');
+  navBrand.className = 'nav-brand';
+  if (brandSection) {
+    const picture = brandSection.querySelector('picture');
+    normalizeLogoPaths(picture);
+    const logoLink = document.createElement('a');
+    logoLink.href = rootLink('/');
+    logoLink.setAttribute('aria-label', 'The Futon Shop');
+    if (picture) logoLink.append(picture);
+    navBrand.append(logoLink);
+    brandSection.remove();
+  }
+
+  // Remove any remaining fragment sections (e.g. the menu marker / metadata)
+  [...nav.children].forEach((child) => {
+    if (child.classList && child.classList.contains('section')) child.remove();
   });
 
-  const navBrand = nav.querySelector('.nav-brand');
-  const brandLink = navBrand.querySelector('.button');
-  if (brandLink) {
-    brandLink.className = '';
-    brandLink.closest('.button-container').className = '';
-  }
+  /* ---------- Tools (search / wishlist / cart / account) ---------- */
+  const navTools = document.createElement('div');
+  navTools.className = 'nav-tools';
 
-  const navSections = nav.querySelector('.nav-sections');
-  if (navSections) {
-    navSections
-      .querySelectorAll(':scope .default-content-wrapper > ul > li')
-      .forEach((navSection) => {
-        if (navSection.querySelector('ul')) navSection.classList.add('nav-drop');
-        setupSubmenu(navSection);
-        navSection.addEventListener('click', (event) => {
-          if (event.target.tagName === 'A') return;
-          if (!isDesktop.matches) {
-            navSection.classList.toggle('active');
-          }
-        });
-        navSection.addEventListener('mouseenter', () => {
-          toggleAllNavSections(navSections);
-          if (isDesktop.matches) {
-            if (!navSection.classList.contains('nav-drop')) {
-              overlay.classList.remove('show');
-              return;
-            }
-            navSection.setAttribute('aria-expanded', 'true');
-            overlay.classList.add('show');
-          }
-        });
-      });
-  }
+  /* ---------- Category nav band (tfs-menu dropin) ---------- */
+  const navSections = document.createElement('div');
+  navSections.className = 'nav-sections';
 
-  const navTools = nav.querySelector('.nav-tools');
+  /* ---------- Assemble main bar (logo + search + tools) ---------- */
+  const mainBar = document.createElement('div');
+  mainBar.className = 'nav-main';
+  mainBar.append(navBrand, navTools);
+
+  nav.append(utilityBar, mainBar, navSections);
 
   /** Wishlist */
   const wishlist = document.createRange().createContextualFragment(`
@@ -492,13 +418,6 @@ export default async function decorate(block) {
 
   searchButton.addEventListener('click', () => toggleSearch(!searchPanel.classList.contains('nav-tools-panel--show')));
 
-  navTools.querySelector('.nav-search-button').addEventListener('click', () => {
-    if (isDesktop.matches) {
-      toggleAllNavSections(navSections);
-      overlay.classList.remove('show');
-    }
-  });
-
   // Close panels when clicking outside
   document.addEventListener('click', (e) => {
     // Check if undo is enabled for mini cart
@@ -530,19 +449,6 @@ export default async function decorate(block) {
   navWrapper.append(nav);
   block.append(navWrapper);
 
-  navWrapper.addEventListener('mouseout', (e) => {
-    if (isDesktop.matches && !nav.contains(e.relatedTarget)) {
-      toggleAllNavSections(navSections);
-      overlay.classList.remove('show');
-    }
-  });
-
-  window.addEventListener('resize', () => {
-    navWrapper.classList.remove('active');
-    overlay.classList.remove('show');
-    toggleMenu(nav, navSections, false);
-  });
-
   // hamburger for mobile
   const hamburger = document.createElement('div');
   hamburger.classList.add('nav-hamburger');
@@ -550,19 +456,37 @@ export default async function decorate(block) {
       <span class="nav-hamburger-icon"></span>
     </button>`;
   hamburger.addEventListener('click', () => {
-    navWrapper.classList.toggle('active');
-    overlay.classList.toggle('show');
-    toggleMenu(nav, navSections);
+    const expanded = nav.getAttribute('aria-expanded') === 'true';
+    nav.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+    navWrapper.classList.toggle('active', !expanded);
+    overlay.classList.toggle('show', !expanded);
+    document.body.style.overflowY = expanded || isDesktop.matches ? '' : 'hidden';
+    hamburger.querySelector('button').setAttribute('aria-label', expanded ? 'Open navigation' : 'Close navigation');
   });
-  nav.prepend(hamburger);
+  mainBar.prepend(hamburger);
   nav.setAttribute('aria-expanded', 'false');
-  // prevent mobile nav behavior on window resize
-  toggleMenu(nav, navSections, isDesktop.matches);
-  isDesktop.addEventListener('change', () => toggleMenu(nav, navSections, isDesktop.matches));
+
+  overlay.addEventListener('click', () => {
+    nav.setAttribute('aria-expanded', 'false');
+    navWrapper.classList.remove('active');
+    overlay.classList.remove('show');
+    document.body.style.overflowY = '';
+  });
+
+  // Close the mobile menu and reset state when crossing to desktop width
+  isDesktop.addEventListener('change', () => {
+    nav.setAttribute('aria-expanded', 'false');
+    navWrapper.classList.remove('active');
+    overlay.classList.remove('show');
+    document.body.style.overflowY = '';
+  });
+
+  // Build the category menu (tfs-menu Commerce dropin) after the shell is in place.
+  await buildCategoryMenu(navSections);
 
   renderAuthCombine(
-    navSections,
-    () => !isDesktop.matches && toggleMenu(nav, navSections, false),
+    navTools,
+    () => !isDesktop.matches,
   );
   renderAuthDropdown(navTools);
 }

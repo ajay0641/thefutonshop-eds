@@ -209,7 +209,11 @@ const onHeaderLinkClick = (element) => {
 const renderAuthCombine = (navSections, toggleMenu) => {
   if (getCookie('auth_dropin_firstname')) return;
 
-  const navListEl = navSections.querySelector('.default-content-wrapper > ul');
+  const navListEl = navSections?.querySelector('.default-content-wrapper > ul');
+  // No authored account list (e.g. the futon-shop header). Sign-in is handled by
+  // the account icon (renderAuthDropdown); nothing to attach the combined-auth
+  // modal trigger to, so bail out cleanly.
+  if (!navListEl) return;
 
   const listItems = navListEl.querySelectorAll(
     '.default-content-wrapper > ul > li',
