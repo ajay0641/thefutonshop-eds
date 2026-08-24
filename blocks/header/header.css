@@ -7,6 +7,10 @@
 }
 
 /* header and nav layout */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 header .nav-wrapper {
   background-color: #fff;
   width: 100%;
@@ -150,7 +154,7 @@ header nav .nav-search #search-bar-form {
   align-items: center;
   border: 1px solid var(--tfs-border);
   background: #f7f7f4;
-  border-radius: 2px;
+  border-radius: 20px;
 }
 
 header nav .nav-search .nav-search-field {
@@ -163,6 +167,7 @@ header nav .nav-search .nav-search-field {
   font-size: 14px;
   color: var(--tfs-nav-link);
   appearance: none;
+  height: 33px;
 }
 
 header nav .nav-search .nav-search-field:focus {
@@ -175,8 +180,8 @@ header nav .nav-search .nav-search-field::placeholder {
 
 header nav .nav-search button.nav-search-button {
   flex: 0 0 auto;
-  width: 42px;
-  height: 38px;
+  width: 33px;
+  height: 33px;
   border: 0;
   background: transparent url('../../icons/search.svg') center / 18px no-repeat;
   font-size: 0;
@@ -394,10 +399,6 @@ header nav .nav-tools-panel {
 
 header nav .nav-tools-panel--show {
   display: block;
-}
-
-header nav .nav-tools-panel .dropdown-wrapper.nav-tools-wrapper .nav-dropdown-button svg {
-  display: none;
 }
 
 /* Search autocomplete results (dropin popover inside .search-bar-result) */
@@ -698,6 +699,10 @@ header nav[aria-expanded='true'] .nav-hamburger-icon::after {
 }
 
 /* CSS for auth dropdown */
+.dropdown-wrapper.nav-tools-wrapper .nav-dropdown-button svg {
+  display: none;
+}
+
 .dropdown-wrapper.nav-tools-wrapper .nav-dropdown-button {
   font: var(--type-body-1-default-font) !important;
   letter-spacing: var(--type-body-1-default-letter-spacing) !important;
