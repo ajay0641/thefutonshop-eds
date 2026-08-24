@@ -53,16 +53,62 @@ header nav .nav-utility a:hover {
   color: var(--tfs-nav-hover);
 }
 
-/* ---------- Main bar (logo + search + tools) ---------- */
+header nav .nav-utility-right {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+/* map-pin icon on the "Our Stores" link */
+header nav .nav-utility a.nav-stores-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+header nav .nav-utility a.nav-stores-link::before {
+  content: '';
+  width: 15px;
+  height: 18px;
+  background: url('../../icons/map-pin.svg') center / contain no-repeat;
+}
+
+/* ---------- Main bar (live chat | logo | search) ---------- */
 header nav .nav-main {
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 12px;
   max-width: var(--tfs-header-max-width);
   margin: 0 auto;
   padding: 10px var(--tfs-header-pad);
+}
+
+header nav .nav-main-left {
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+}
+
+/* Live Chat link (left of logo) */
+header nav .nav-live-chat {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--tfs-nav-link);
+  font-size: 16px;
+  text-decoration: none;
+}
+
+header nav .nav-live-chat:hover {
+  color: var(--tfs-nav-hover);
+}
+
+header nav .nav-live-chat-icon {
+  width: 30px;
+  height: 30px;
+  background: url('../../icons/chats-circle.svg') center / contain no-repeat;
 }
 
 header nav .nav-brand {
@@ -81,6 +127,72 @@ header nav .nav-brand img {
   width: auto;
   height: 64px;
   object-fit: contain;
+}
+
+/* ---------- Search box (right of logo) ---------- */
+header nav .nav-search {
+  grid-column: 3;
+  display: flex;
+  justify-content: flex-end;
+  position: relative;
+}
+
+header nav .nav-search .search-wrapper {
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+}
+
+header nav .nav-search #search-bar-form {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--tfs-border);
+  background: #f7f7f4;
+  border-radius: 2px;
+}
+
+header nav .nav-search .nav-search-field {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 9px 14px;
+  font-family: var(--type-base-font-family);
+  font-size: 14px;
+  color: var(--tfs-nav-link);
+  appearance: none;
+}
+
+header nav .nav-search .nav-search-field:focus {
+  outline: none;
+}
+
+header nav .nav-search .nav-search-field::placeholder {
+  color: #8a8a80;
+}
+
+header nav .nav-search button.nav-search-button {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 38px;
+  border: 0;
+  background: transparent url('../../icons/search.svg') center / 18px no-repeat;
+  font-size: 0;
+  cursor: pointer;
+}
+
+header nav .nav-search .search-bar-result {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 100%;
+  padding: var(--spacing-small);
+  box-sizing: border-box;
+  background: #fff;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+  z-index: 120;
+  max-height: 70vh;
+  overflow-y: auto;
 }
 
 /* ---------- Category nav band (tfs-menu dropin) ---------- */
@@ -189,31 +301,32 @@ header nav .nav-sections .dropdown-menu img {
   height: auto;
 }
 
-/* tools */
+/* tools — icon buttons shown in the utility bar (right) */
 header nav .nav-tools {
-  grid-column: 3;
   display: flex;
-  height: 100%;
-  gap: var(--spacing-small);
+  gap: 14px;
   align-items: center;
-  justify-content: flex-end;
   z-index: 3;
 }
 
 header nav .nav-tools-wrapper > button {
   color: var(--tfs-nav-link);
   background: transparent;
-  padding: 8px;
+  padding: 4px;
   border: unset;
   cursor: pointer;
-  height: 40px;
-  width: 40px;
+  height: 28px;
+  width: 28px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
 }
 
 header nav .nav-tools button.nav-cart-button {
   background-image: url('../../icons/cart.svg');
   background-repeat: no-repeat;
   background-position: center;
+  background-size: contain;
   position: relative;
 }
 
@@ -249,14 +362,21 @@ header nav .nav-tools button.nav-wishlist-button {
   background-image: url('../../icons/heart.svg');
   background-repeat: no-repeat;
   background-position: center;
+  background-size: contain;
   position: relative;
 }
 
-header nav .nav-tools button.nav-search-button {
-  font-size: 0;
-  background-image: url('../../icons/search.svg');
+/* account (user) icon */
+header nav .nav-tools .nav-dropdown-button {
+  background-image: url('../../icons/user.svg');
   background-repeat: no-repeat;
   background-position: center;
+  background-size: contain;
+  font-size: 0;
+  min-width: 28px;
+  width: 28px;
+  height: 28px;
+  padding: 4px;
 }
 
 header nav .nav-tools-panel {
@@ -274,48 +394,23 @@ header nav .nav-tools-panel--show {
   display: block;
 }
 
-header .nav-search-panel {
-  padding: var(--spacing-small);
-  box-sizing: border-box;
-  max-height: 760px;
-  overflow-y: auto;
-}
-
-header .nav-search-panel input {
-  width: 100%;
-  padding: 10px;
-  box-sizing: border-box;
-  font: var(--type-headline-2-default-font);
-  letter-spacing: var(--type-headline-2-default-letter-spacing);
-  border: 1px solid currentcolor;
-  appearance: none;
-}
-
-header .nav-search-panel .dropin-input-container {
-  width: 100%;
-}
-
-header .nav-search-panel .search-bar-result {
-  width: 100%;
-  position: relative;
-}
-
-header .nav-search-panel .search-bar-result .product-discovery-product-list__grid {
+/* Search autocomplete results (dropin popover inside .search-bar-result) */
+header nav .nav-search .search-bar-result .product-discovery-product-list__grid {
   margin-block: var(--spacing-small);
 }
 
 /* Popover List */
-header .nav-search-panel .search-bar-result .dropin-product-item-card {
+header nav .nav-search .search-bar-result .dropin-product-item-card {
   display: grid;
   grid-template-columns: 60px 1fr;
 }
 
 /* Product Item Skeleton */
-header .nav-search-panel .search-bar-result .dropin-product-item-card__content .dropin-skeleton-row {
+header nav .nav-search .search-bar-result .dropin-product-item-card__content .dropin-skeleton-row {
   height: 1em;
 }
 
-header .nav-search-panel .search-bar-result .product-discovery-product-list__footer button {
+header nav .nav-search .search-bar-result .product-discovery-product-list__footer button {
   width: 100%;
 }
 
@@ -339,14 +434,6 @@ header .nav-search-panel .search-bar-result .product-discovery-product-list__foo
   .cart-mini-cart:has(.cart-empty-cart) {
     max-height: calc(100vh - 120px);
   }
-
-  header .nav-search-panel {
-    max-height: calc(100vh - 120px);
-  }
-}
-
-header .nav-search-input .search_autocomplete .popover-container {
-  width: 100%;
 }
 
 /* ---------- hamburger ---------- */
@@ -454,11 +541,46 @@ header nav[aria-expanded='true'] .nav-hamburger-icon::after {
 
   header nav .nav-main {
     grid-template-columns: auto 1fr auto;
+    gap: 8px;
     padding: 8px var(--tfs-header-pad);
   }
 
   header nav .nav-brand img {
     height: 48px;
+  }
+
+  /* Hide the Live Chat label on mobile (hamburger takes the left slot) */
+  header nav .nav-main-left {
+    display: none;
+  }
+
+  /* Search moves to its own full-width row below the logo */
+  header nav .nav-search {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: stretch;
+    margin-top: 8px;
+  }
+
+  header nav .nav-search .search-wrapper {
+    max-width: none;
+  }
+
+  /* Utility bar becomes a slim top strip holding just the tool icons */
+  header nav .nav-utility {
+    display: flex;
+    justify-content: flex-end;
+    padding: 6px var(--tfs-header-pad);
+    border-bottom: 1px solid var(--tfs-border);
+  }
+
+  header nav .nav-utility-left,
+  header nav .nav-utility-right ul {
+    display: none;
+  }
+
+  header nav .nav-tools {
+    gap: 12px;
   }
 
   /* Category menu becomes a full-width slide-in drawer on mobile */
@@ -519,10 +641,6 @@ header nav[aria-expanded='true'] .nav-hamburger-icon::after {
     gap: 0;
     padding: 0 20px 16px;
   }
-
-  header nav .nav-utility {
-    display: none;
-  }
 }
 
 /* ---------- Commerce auth / panels (shared) ---------- */
@@ -536,10 +654,6 @@ header nav[aria-expanded='true'] .nav-hamburger-icon::after {
   }
 
   header nav .minicart-panel {
-    width: 398px;
-  }
-
-  header nav .nav-search-panel {
     width: 398px;
   }
 }
