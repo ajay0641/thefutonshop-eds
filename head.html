@@ -14,6 +14,19 @@
         }]
     }
 </script>
+<script nonce="aem">
+    (function () {
+        try {
+            var categoryPath = sessionStorage.getItem('hlx-category-path');
+            if (!categoryPath || !/\/categories\/.+\/[^/]+$/.test(categoryPath)) return;
+            if (!window.location.pathname.match(/\/categories\/default\/?$/)) return;
+            history.replaceState(history.state, '', categoryPath);
+            sessionStorage.removeItem('hlx-category-path');
+        } catch (e) {
+            // ignore
+        }
+    }());
+</script>
 <script nonce="aem" type="importmap">
     {
         "imports": {

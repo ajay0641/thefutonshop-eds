@@ -16,18 +16,68 @@ import { tryRenderAemAssetsImage } from '@dropins/tools/lib/aem/assets.js';
 import { events } from '@dropins/tools/event-bus.js';
 // AEM
 import { readBlockConfig } from '../../scripts/aem.js';
-import { fetchPlaceholders, getProductLink } from '../../scripts/commerce.js';
+import {
+  CS_FETCH_GRAPHQL,
+  canonicalizeCategoryUrl,
+  fetchPlaceholders,
+  getCategoryFromUrl,
+  getProductLink,
+  IS_DA,
+  IS_UE,
+  isCategoryTemplate,
+  shouldCanonicalizeCategoryUrl,
+} from '../../scripts/commerce.js';
 import { getSearchStateFromUrl, applySearchStateToUrl } from './search-url.js';
 
 // Initializers
 import '../../scripts/initializers/search.js';
 import '../../scripts/initializers/wishlist.js';
 
+/**
+ * Resolves catalog urlPath for template preview in DA/UE when only defaultCateId is authored.
+ * @param {string} categoryId Catalog category ID from block config
+ * @returns {Promise<string|null>} Category urlPath or null
+ */
+async function resolveUrlPathFromCategoryId(categoryId) {
+  if (!categoryId) return null;
+
+  const query = `
+    query ResolveCategoryUrlPath($ids: [String!]!) {
+      categories(ids: $ids, roles: ["active"]) {
+        urlPath
+      }
+    }
+  `;
+
+  try {
+    const { data } = await CS_FETCH_GRAPHQL.fetchGraphQl(query, {
+      method: 'POST',
+      variables: { ids: [categoryId] },
+    });
+    return data?.categories?.[0]?.urlPath || null;
+  } catch (error) {
+    console.warn('Failed to resolve category urlPath for template preview', error);
+    return null;
+  }
+}
+
 export default async function decorate(block) {
   const labels = await fetchPlaceholders();
 
   const config = readBlockConfig(block);
   const pageSize = parseInt(config.pagesize, 10) || 9;
+  const categoryMeta = getCategoryFromUrl();
+
+  // Override authored urlpath with the category from the live URL (folder mapping).
+  const urlCategoryPath = categoryMeta?.urlPath;
+  if (urlCategoryPath) {
+    config.urlpath = urlCategoryPath;
+  } else if (!config.urlpath && config.defaultcateid && isCategoryTemplate() && (IS_UE || IS_DA)) {
+    const resolvedPath = await resolveUrlPathFromCategoryId(config.defaultcateid);
+    if (resolvedPath) {
+      config.urlpath = resolvedPath;
+    }
+  }
 
   const fragment = document.createRange().createContextualFragment(`
     <div class="search__wrapper">
@@ -55,6 +105,9 @@ export default async function decorate(block) {
   if (config.urlpath) {
     block.dataset.urlpath = config.urlpath;
   }
+  if (categoryMeta?.cateId) {
+    block.dataset.categoryId = categoryMeta.cateId;
+  }
 
   const searchState = getSearchStateFromUrl(new URL(window.location.href));
 
@@ -62,10 +115,18 @@ export default async function decorate(block) {
   const visibilityFilter = { attribute: 'visibility', in: ['Search', 'Catalog, Search'] };
   const userFilters = searchState.filter.filter((f) => f.attribute !== 'visibility');
 
-  // Normalize URL (e.g. pipe-separated filter values)
-  const normalizedUrl = new URL(window.location.href);
-  applySearchStateToUrl(normalizedUrl, searchState);
-  window.history.replaceState({}, '', normalizedUrl.toString());
+  // Normalize URL if scripts.js has not already canonicalized it
+  let normalizedUrl = new URL(window.location.href);
+  if (shouldCanonicalizeCategoryUrl(normalizedUrl, categoryMeta)) {
+    normalizedUrl = canonicalizeCategoryUrl(normalizedUrl, categoryMeta);
+    applySearchStateToUrl(normalizedUrl, searchState);
+    window.history.replaceState({}, '', normalizedUrl.toString());
+  } else {
+    applySearchStateToUrl(normalizedUrl, searchState);
+    if (normalizedUrl.href !== window.location.href) {
+      window.history.replaceState({}, '', normalizedUrl.toString());
+    }
+  }
 
   // Request search based on the page type on block load
   if (config.urlpath) {
@@ -215,8 +276,10 @@ export default async function decorate(block) {
   // Listen for search results (event is fired after the block is rendered; eager: false)
   // URL is owned by this project; update it when search state changes.
   events.on('search/result', (payload) => {
-    const url = new URL(window.location.href);
+    const url = canonicalizeCategoryUrl(new URL(window.location.href), categoryMeta);
     applySearchStateToUrl(url, payload.request);
-    window.history.pushState({}, '', url.toString());
+    if (url.href !== window.location.href) {
+      window.history.pushState({}, '', url.toString());
+    }
   }, { eager: false });
 }

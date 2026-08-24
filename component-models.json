@@ -465,7 +465,13 @@
         "component": "text",
         "name": "urlpath",
         "label": "URL Path",
-        "description": "URL Path of the category as defined in the catalog (not CMS)"
+        "description": "Catalog category urlPath (e.g. apparel). Required for DA preview and enrichment. Live category URLs override this value."
+      },
+      {
+        "component": "text",
+        "name": "defaultCateId",
+        "label": "Default Category ID",
+        "description": "Optional: category ID for template preview in DA/UE when urlpath is not set (e.g. 6 for a category)"
       },
       {
         "component": "number",

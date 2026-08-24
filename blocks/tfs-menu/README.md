@@ -10,6 +10,8 @@ Add a **TFS Menu** block to any section. Configure:
 |-------|-------------|
 | `parent-id` | Root category ID for the menu tree (default `2`) |
 
+Category links are rewritten client-side to `/categories/{urlPath}/{categoryId}`. When folder mapping is not configured on the environment, `scripts/scripts.js` redirects those URLs to `/categories/default?cp=...` so the PLP template can load the correct category.
+
 Example:
 
 | parent-id |
