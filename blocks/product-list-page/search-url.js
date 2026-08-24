@@ -96,6 +96,21 @@ function serializeFilter(filter) {
 }
 
 /**
+ * Default catalog sort — omitted from the URL to keep category links clean.
+ * @param {{ attribute: string, direction: string }[]} sort
+ * @returns {string}
+ */
+function getSortParam(sort) {
+  if (!sort?.length) return '';
+  if (sort.length === 1
+    && sort[0].attribute === 'position'
+    && sort[0].direction === 'DESC') {
+    return '';
+  }
+  return serializeSort(sort);
+}
+
+/**
  * Reads all search state from the current URL query params.
  * Return shape matches the request object used by applySearchStateToUrl and the search API.
  * @param {URL} url - URL to read from (e.g. new URL(window.location.href))
@@ -121,6 +136,7 @@ export function getSearchStateFromUrl(url) {
  * Writes search state from a request object onto the URL's query params.
  * Call after search/result to keep the URL in sync (e.g. in the search/result event handler).
  * Mutates the URL in place; then use url.toString() or history.pushState to apply.
+ * Omits default values (page 1, empty sort/filter) to avoid unnecessary URL churn.
  * @param {URL} url - URL to update (e.g. new URL(window.location.href))
  * @param {{ phrase?: string, currentPage?: number, sort?: Array, filter?: Array }} request
  *   Search request from the discovery API; only set params are written to the URL.
@@ -128,16 +144,31 @@ export function getSearchStateFromUrl(url) {
 export function applySearchStateToUrl(url, request) {
   if (request?.phrase) {
     url.searchParams.set('q', request.phrase);
+  } else {
+    url.searchParams.delete('q');
   }
-  if (request?.currentPage) {
+
+  if (request?.currentPage && request.currentPage > 1) {
     url.searchParams.set('page', String(request.currentPage));
+  } else {
+    url.searchParams.delete('page');
   }
-  if (request?.sort != null) {
-    url.searchParams.set('sort', serializeSort(request.sort));
+
+  const sortValue = getSortParam(request?.sort);
+  if (sortValue) {
+    url.searchParams.set('sort', sortValue);
+  } else {
+    url.searchParams.delete('sort');
   }
+
   if (request?.filter != null) {
     // Don't add visibility filter to the URL, since we always add it in product-list-page.js
     const urlFilters = request.filter.filter((f) => f.attribute !== 'visibility');
-    url.searchParams.set('filter', serializeFilter(urlFilters));
+    const filterValue = serializeFilter(urlFilters);
+    if (filterValue) {
+      url.searchParams.set('filter', filterValue);
+    } else {
+      url.searchParams.delete('filter');
+    }
   }
 }
