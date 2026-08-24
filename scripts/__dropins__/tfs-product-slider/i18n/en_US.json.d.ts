@@ -10,7 +10,8 @@ declare const _default: {
       "saveLabel": "Save up to {percent}%",
       "reviewsLabel": "{count} Reviews",
       "reviewLabel": "{count} Review",
-      "addToCartLabel": "Add to cart"
+      "addToCartLabel": "Add to cart",
+      "addToWishlistLabel": "Add to wish list"
     }
   }
 }

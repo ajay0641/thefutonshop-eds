@@ -75,6 +75,11 @@ Events are emitted by the drop-in (not the block wrapper):
 4. **Navigation**: Users scroll the track or use previous/next controls when more than one product is present
 5. **Product open**: Image/name click navigates to the product detail page
 6. **Add to cart**: Cart icon calls storefront `onAddToCart` → `@dropins/storefront-cart` `addProductsToCart([{ sku, quantity: 1 }])`. Complex / not-allowed products redirect to PDP instead. While the request runs, the clicked icon shows a loading spinner (`is-loading`)
+7. **Add to wishlist**: Heart icon calls storefront `onAddToWishlist` → `@dropins/storefront-wishlist` toggle via `addProductsToWishlist` / `removeProductsFromWishlist` (same pattern as PLP). Active state uses `is-active` on the button
+
+### Styling note
+
+All TFS card/slider visual design lives in **`blocks/tfs-product-slider/tfs-product-slider.css`**, not in the npm drop-in. After upgrading `@ajay0641/tfs-product-slider`, run `npm run install:dropins` and verify class names still match (e.g. `__action-btn`, `__wishlist`). Update block CSS if the drop-in DOM changes — storefront styles are not overwritten by drop-in updates.
 
 ### Error Handling
 
