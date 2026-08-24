@@ -527,6 +527,19 @@
     ]
   },
   {
+    "id": "tfs-menu",
+    "fields": [
+      {
+        "component": "text",
+        "name": "parent-id",
+        "label": "Parent Category ID",
+        "valueType": "string",
+        "value": "2",
+        "description": "Catalog Service category ID for the menu root (default 2 = store root)"
+      }
+    ]
+  },
+  {
     "id": "tfs-product-slider",
     "fields": [
       {

@@ -573,6 +573,16 @@
           }
         },
         {
+          "title": "TFS Menu",
+          "id": "tfs-menu",
+          "model": "tfs-menu",
+          "plugins": {
+            "da": {
+              "type": "key-value-block"
+            }
+          }
+        },
+        {
           "title": "TFS Newsletter",
           "id": "tfs-newsletter",
           "model": "tfs-newsletter",
