@@ -56,7 +56,7 @@ header nav .nav-utility a:hover {
 header nav .nav-utility-right {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 54px;
 }
 
 /* map-pin icon on the "Our Stores" link */
@@ -64,6 +64,7 @@ header nav .nav-utility a.nav-stores-link {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  vertical-align: middle;
 }
 
 header nav .nav-utility a.nav-stores-link::before {
@@ -115,6 +116,7 @@ header nav .nav-brand {
   grid-column: 2;
   display: flex;
   justify-content: center;
+  margin-top: -50px;
 }
 
 /* stylelint-disable-next-line no-descending-specificity */
@@ -392,6 +394,10 @@ header nav .nav-tools-panel {
 
 header nav .nav-tools-panel--show {
   display: block;
+}
+
+header nav .nav-tools-panel .dropdown-wrapper.nav-tools-wrapper .nav-dropdown-button svg {
+  display: none;
 }
 
 /* Search autocomplete results (dropin popover inside .search-bar-result) */
@@ -702,8 +708,6 @@ header nav[aria-expanded='true'] .nav-hamburger-icon::after {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: auto;
-  min-width: 40px;
 }
 
 .dropdown-wrapper.nav-tools-wrapper .nav-auth-menu-panel {
