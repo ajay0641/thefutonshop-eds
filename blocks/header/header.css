@@ -550,10 +550,11 @@ header nav[aria-expanded='true'] .nav-hamburger-icon::after {
     grid-template-columns: auto 1fr auto;
     gap: 8px;
     padding: 8px var(--tfs-header-pad);
+    row-gap: 10px;
   }
 
   header nav .nav-brand img {
-    height: 48px;
+    height: 44px;
   }
 
   /* Hide the Live Chat label on mobile (hamburger takes the left slot) */
@@ -566,28 +567,52 @@ header nav[aria-expanded='true'] .nav-hamburger-icon::after {
     grid-column: 1 / -1;
     grid-row: 2;
     justify-content: stretch;
-    margin-top: 8px;
   }
 
   header nav .nav-search .search-wrapper {
     max-width: none;
   }
 
-  /* Utility bar becomes a slim top strip holding just the tool icons */
+  /* Utility bar becomes a sage-green strip with white promo links */
   header nav .nav-utility {
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
+    background-color: #5f665a;
     padding: 6px var(--tfs-header-pad);
-    border-bottom: 1px solid var(--tfs-border);
   }
 
-  header nav .nav-utility-left,
-  header nav .nav-utility-right ul {
+  header nav .nav-utility-left {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+
+  header nav .nav-utility-left ul {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  header nav .nav-utility a {
+    color: #fff;
+    font-size: 12px;
+  }
+
+  header nav .nav-utility a:hover {
+    color: #fff;
+    opacity: 0.85;
+  }
+
+  /* Right group (Our Stores/phone + tool icons) hidden here; tools move to main bar */
+  header nav .nav-utility-right {
     display: none;
   }
 
+  /* Tool icons sit on the white main bar, right of the logo */
   header nav .nav-tools {
-    gap: 12px;
+    grid-column: 3;
+    grid-row: 1;
+    gap: 16px;
   }
 
   /* Category menu becomes a full-width slide-in drawer on mobile */

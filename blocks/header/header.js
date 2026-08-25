@@ -491,12 +491,25 @@ export default async function decorate(block) {
     document.body.style.overflowY = '';
   });
 
+  // Place the tool icons (wishlist/cart/account) in the utility bar on
+  // desktop and in the main bar (right of logo) on mobile — matching the
+  // source, where mobile shows the icons on the white main bar.
+  function placeTools() {
+    if (isDesktop.matches) {
+      if (navTools.parentElement !== utilityRight) utilityRight.append(navTools);
+    } else if (navTools.parentElement !== mainBar) {
+      mainBar.append(navTools);
+    }
+  }
+  placeTools();
+
   // Close the mobile menu and reset state when crossing to desktop width
   isDesktop.addEventListener('change', () => {
     nav.setAttribute('aria-expanded', 'false');
     navWrapper.classList.remove('active');
     overlay.classList.remove('show');
     document.body.style.overflowY = '';
+    placeTools();
   });
 
   // Build the category menu (tfs-menu Commerce dropin) after the shell is in place.
