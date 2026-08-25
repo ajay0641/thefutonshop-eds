@@ -25,6 +25,7 @@ import {
   isCategoryTemplate,
   rootLink,
 } from './commerce.js';
+import { prefetchMenuCategories } from './menu-data.js';
 
 /*
  * Trusted Types default policy.
@@ -209,6 +210,7 @@ async function loadEager(doc) {
   if (main) {
     try {
       await initializeCommerce();
+      await prefetchMenuCategories();
       decorateMain(main);
       applyTemplates(doc);
       await loadCommerceEager();
@@ -235,6 +237,7 @@ async function loadEager(doc) {
  * @param {Element} doc The container element
  */
 async function loadLazy(doc) {
+  await prefetchMenuCategories();
   loadHeader(doc.querySelector('header'));
 
   const main = doc.querySelector('main');

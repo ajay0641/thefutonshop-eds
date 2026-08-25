@@ -1,8 +1,8 @@
 import MenuContainer from '@ajay0641/tfs-menu/containers/MenuContainer.js';
 import { render as provider } from '@ajay0641/tfs-menu/render.js';
-import { getMenu } from '@ajay0641/tfs-menu/api.js';
 import { readBlockConfig } from '../../scripts/aem.js';
 import { CATEGORY_PATH_STORAGE_KEY, getCategoryLink, rootLink } from '../../scripts/commerce.js';
+import { fetchMenuCategories, getMenuCategoriesFetcher } from '../../scripts/menu-data.js';
 
 import '../../scripts/initializers/menu.js';
 
@@ -111,7 +111,7 @@ function attachCategoryNavigation(block) {
  */
 async function rewriteMenuLinksWithCategoryId(block, parentId) {
   try {
-    const categories = await getMenu(parentId);
+    const categories = await fetchMenuCategories(parentId);
     rewriteMenuLinks(block, buildCategoryLookup(categories));
   } catch (error) {
     console.warn('Failed to rewrite menu category links:', error);
@@ -157,6 +157,7 @@ export default async function decorate(block) {
 
   await provider.render(MenuContainer, {
     parentId,
+    fetchCategories: getMenuCategoriesFetcher(parentId),
   })(block);
 
   await waitForMenuLinks(block, parentId);

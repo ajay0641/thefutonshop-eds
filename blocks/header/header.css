@@ -277,10 +277,6 @@ header nav .nav-sections .dropdown-grid {
   gap: 32px;
 }
 
-header nav .nav-sections .dropdown-column {
-  min-width: 200px;
-}
-
 header nav .nav-sections .dropdown-category-title {
   font-size: 16px;
   font-weight: 600;
