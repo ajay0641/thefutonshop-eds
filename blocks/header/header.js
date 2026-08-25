@@ -473,23 +473,32 @@ export default async function decorate(block) {
   hamburger.innerHTML = `<button type="button" aria-controls="nav" aria-label="Open navigation">
       <span class="nav-hamburger-icon"></span>
     </button>`;
+
+  // Opens/closes the mobile category drawer and keeps related state in sync.
+  function setMenu(open) {
+    nav.setAttribute('aria-expanded', open ? 'true' : 'false');
+    navWrapper.classList.toggle('active', open);
+    overlay.classList.toggle('show', open);
+    document.body.style.overflowY = open && !isDesktop.matches ? 'hidden' : '';
+    hamburger.querySelector('button').setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
+  }
+
   hamburger.addEventListener('click', () => {
-    const expanded = nav.getAttribute('aria-expanded') === 'true';
-    nav.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-    navWrapper.classList.toggle('active', !expanded);
-    overlay.classList.toggle('show', !expanded);
-    document.body.style.overflowY = expanded || isDesktop.matches ? '' : 'hidden';
-    hamburger.querySelector('button').setAttribute('aria-label', expanded ? 'Open navigation' : 'Close navigation');
+    setMenu(nav.getAttribute('aria-expanded') !== 'true');
   });
   mainBar.prepend(hamburger);
   nav.setAttribute('aria-expanded', 'false');
 
-  overlay.addEventListener('click', () => {
-    nav.setAttribute('aria-expanded', 'false');
-    navWrapper.classList.remove('active');
-    overlay.classList.remove('show');
-    document.body.style.overflowY = '';
-  });
+  // Close (X) button inside the drawer — the full-width drawer covers the
+  // hamburger, so an in-drawer close control is needed on mobile.
+  const drawerClose = document.createElement('button');
+  drawerClose.type = 'button';
+  drawerClose.className = 'nav-drawer-close';
+  drawerClose.setAttribute('aria-label', 'Close navigation');
+  drawerClose.addEventListener('click', () => setMenu(false));
+  navSections.prepend(drawerClose);
+
+  overlay.addEventListener('click', () => setMenu(false));
 
   // Place the tool icons (wishlist/cart/account) in the utility bar on
   // desktop and in the main bar (right of logo) on mobile — matching the
@@ -505,10 +514,7 @@ export default async function decorate(block) {
 
   // Close the mobile menu and reset state when crossing to desktop width
   isDesktop.addEventListener('change', () => {
-    nav.setAttribute('aria-expanded', 'false');
-    navWrapper.classList.remove('active');
-    overlay.classList.remove('show');
-    document.body.style.overflowY = '';
+    setMenu(false);
     placeTools();
   });
 

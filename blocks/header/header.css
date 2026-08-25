@@ -207,6 +207,11 @@ header nav .nav-sections {
   background-color: #fff;
 }
 
+/* In-drawer close button — hidden on desktop, shown on mobile */
+header nav .nav-drawer-close {
+  display: none;
+}
+
 header nav .nav-sections > div {
   max-width: var(--tfs-header-max-width);
   margin: 0 auto;
@@ -449,7 +454,7 @@ header nav .nav-hamburger {
 /* stylelint-disable-next-line no-descending-specificity */
 header nav .nav-hamburger button {
   cursor: pointer;
-  height: 22px;
+  height: 28px;
   width: 28px;
   margin: 0;
   border: 0;
@@ -459,47 +464,12 @@ header nav .nav-hamburger button {
   color: inherit;
 }
 
-header nav .nav-hamburger-icon,
-header nav .nav-hamburger-icon::before,
-header nav .nav-hamburger-icon::after {
-  box-sizing: border-box;
+/* Mobile toggle uses the bar (list) icon */
+header nav .nav-hamburger-icon {
   display: block;
-  position: relative;
-  width: 24px;
-  height: 2px;
-  border-radius: 2px;
-  background: currentcolor;
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
-header nav .nav-hamburger-icon::before,
-header nav .nav-hamburger-icon::after {
-  content: '';
-  position: absolute;
-  left: 0;
-}
-
-header nav .nav-hamburger-icon::before {
-  top: -7px;
-}
-
-header nav .nav-hamburger-icon::after {
-  top: 7px;
-}
-
-/* hamburger -> cross when nav open (mobile) */
-header nav[aria-expanded='true'] .nav-hamburger-icon {
-  background: transparent;
-}
-
-header nav[aria-expanded='true'] .nav-hamburger-icon::before {
-  top: 0;
-  transform: rotate(45deg);
-}
-
-header nav[aria-expanded='true'] .nav-hamburger-icon::after {
-  top: 0;
-  transform: rotate(-45deg);
+  width: 26px;
+  height: 26px;
+  background: url('../../icons/bar.svg') center / contain no-repeat;
 }
 
 .overlay {
@@ -628,12 +598,29 @@ header nav[aria-expanded='true'] .nav-hamburger-icon::after {
     left: 0;
     bottom: 0;
     width: 100%;
+    padding-top: 52px;
+    box-sizing: border-box;
     background: #fff;
     transform: translateX(-100%);
     transition: transform 0.3s ease;
     overflow-y: auto;
     z-index: 25;
     border-top: 0;
+  }
+
+  /* In-drawer close (X) button, top-right */
+  header nav .nav-drawer-close {
+    display: block;
+    position: absolute;
+    top: 12px;
+    right: 15px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    cursor: pointer;
+    background: transparent url('../../icons/close.svg') center / 18px no-repeat;
+    z-index: 26;
   }
 
   /* tfs-menu inner containers must fill the full-width drawer, flush to edges */
