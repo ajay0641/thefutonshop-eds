@@ -71,7 +71,7 @@ export function createPageSizeController({
   onPageSizeChange,
 }) {
   const showLabel = labels.show || 'Show';
-  const perPageLabel = labels.perPage || 'per page';
+  const perPageLabel = labels.perPage || 'Per Page';
 
   const wrapper = document.createElement('div');
   wrapper.className = 'search__page-size';
@@ -79,14 +79,14 @@ export function createPageSizeController({
   const label = document.createElement('label');
   label.className = 'search__page-size-label';
   label.setAttribute('for', 'plp-page-size-select');
+  label.textContent = perPageLabel;
 
   const select = document.createElement('select');
   select.id = 'plp-page-size-select';
-  select.className = 'search__page-size-select';
+  select.className = 'search__page-size-select search__toolbar-select';
   select.setAttribute('aria-label', `${showLabel} ${perPageLabel}`);
 
-  label.append(showLabel, ' ', select, ` ${perPageLabel}`);
-  wrapper.append(label);
+  wrapper.append(label, select);
   container.append(wrapper);
 
   let currentPageSize = initialPageSize;

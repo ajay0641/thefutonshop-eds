@@ -27,7 +27,7 @@
 }
 
 .block.breadcrumb .dropin-breadcrumbs__link {
-    color: var(--color-neutral-800);
+    color: var(--tfs-nav-link);
     text-decoration: none;
 }
 
@@ -38,15 +38,23 @@
 
 .block.breadcrumb .dropin-breadcrumbs__item--last .dropin-breadcrumbs__link,
 .block.breadcrumb .dropin-breadcrumbs__item--last span {
-    color: var(--color-neutral-600);
+    color: var(--tfs-nav-link);
     pointer-events: none;
     text-decoration: none;
 }
 
+.block.breadcrumb .dropin-breadcrumbs__separator--default {
+    font-size: 0;
+}
+
 .block.breadcrumb .dropin-breadcrumbs__separator--default::after {
-    color: var(--color-neutral-500);
-    content: '/';
-    display: inline-flex;
-    font-size: 0.875rem;
-    line-height: 1;
+    background-image: url("../../icons/chevron-right.svg");
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    width: 14px;
+    height: 14px;
+    content: '';
+    display: inline-block;
+    vertical-align: middle;
 }

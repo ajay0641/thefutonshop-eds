@@ -86,8 +86,6 @@
     font-size: 22px;
     font-weight: 400;
     margin: 0 0 var(--spacing-small);
-    padding-bottom: var(--spacing-xsmall);
-    border-bottom: 1px solid var(--tfs-border, #e2e2da);
 }
 
 /* Facet groups styled as the source's PRICE / SIZE / FEEL accordions */
@@ -116,10 +114,20 @@
     margin-left: 8px;
     background: url('../../icons/chevron-down.svg') center / contain no-repeat;
     flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.block.product-list-page .search__facets .product-discovery-facet--collapsed .product-discovery-facet__header::after {
+    transform: rotate(-90deg);
 }
 
 .block.product-list-page .search__facets .product-discovery-facet__bucket {
     padding: 4px 2px;
+}
+
+.block.product-list-page .search__facets .product-discovery-facet--collapsed .product-discovery-facet__bucket,
+.block.product-list-page .search__facets .product-discovery-facet--collapsed > .dropin-button {
+    display: none;
 }
 
 .block.product-list-page .search__facets--visible {
@@ -231,36 +239,87 @@
     line-height: 1;
 }
 
-.block.product-list-page .search__page-size-container {
+/* Per Page + Sort By — match thefutonshop.com toolbar selects */
+.block.product-list-page {
+    --plp-toolbar-select-border: #eaeae3;
+    --plp-toolbar-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' stroke='%233d3d3d' stroke-width='1.25' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.block.product-list-page .search__page-size-container,
+.block.product-list-page .search__product-sort .dropin-picker {
     align-items: center;
-    display: flex;
+    display: inline-flex;
+    flex-shrink: 0;
+    gap: 10px;
 }
 
 .block.product-list-page .search__page-size {
     align-items: center;
     display: inline-flex;
+    gap: 10px;
 }
 
-.block.product-list-page .search__page-size-label {
-    align-items: center;
-    color: var(--color-neutral-800);
-    display: inline-flex;
-    font: var(--type-body-2-default-font);
-    gap: var(--spacing-xxsmall);
-    letter-spacing: var(--type-body-2-default-letter-spacing);
+.block.product-list-page .search__page-size-label,
+.block.product-list-page .search__product-sort .dropin-picker__floatingLabel {
+    color: var(--color-neutral-900);
+    font-family: var(--type-base-font-family);
+    font-size: 18px;
+    font-weight: 400;
+    line-height: 22px;
+    margin: 0;
+    order: -1;
+    position: static;
+    transform: none;
     white-space: nowrap;
 }
 
-.block.product-list-page .search__page-size-select {
+.block.product-list-page .search__toolbar-select,
+.block.product-list-page .search__product-sort .dropin-picker__select {
     appearance: none;
-    background-color: var(--color-neutral-50);
-    border: 1px solid var(--color-neutral-400);
-    border-radius: var(--shape-border-radius-2);
-    color: var(--color-neutral-800);
+    background-color: transparent;
+    background-image: var(--plp-toolbar-select-chevron);
+    background-position: calc(100% - 12px) 50%;
+    background-repeat: no-repeat;
+    background-size: 12px 8px;
+    border: 1px solid var(--plp-toolbar-select-border);
+    border-radius: 0;
+    box-sizing: border-box;
+    color: var(--color-neutral-900);
     cursor: pointer;
-    font: var(--type-body-2-strong-font);
-    min-width: 4rem;
-    padding: 8px 32px 8px 12px;
+    font-family: var(--type-base-font-family);
+    font-size: 18px;
+    font-weight: 400;
+    height: 50px;
+    line-height: 22px;
+    min-width: 0;
+    padding: 14px 36px 14px 15px;
+}
+
+.block.product-list-page .search__page-size-select {
+    width: 86px;
+}
+
+.block.product-list-page .search__product-sort .dropin-picker {
+    height: auto;
+    position: relative;
+}
+
+.block.product-list-page .search__product-sort .dropin-picker__select {
+    width: 190px;
+}
+
+.block.product-list-page .search__product-sort .dropin-picker__chevronDown {
+    display: none;
+}
+
+.block.product-list-page .search__product-sort .dropin-picker__select--floating {
+    padding-top: 14px;
+}
+
+.block.product-list-page .search__product-sort .dropin-picker.dropin-picker__selected .dropin-picker__floatingLabel {
+    font-size: 18px;
+    line-height: 22px;
+    transform: none;
 }
 
 /* List view: single column product grid */
@@ -351,7 +410,6 @@
         flex-wrap: wrap;
         gap: var(--spacing-small);
         justify-content: flex-end;
-        border-bottom: 1px solid var(--tfs-border, #e2e2da);
         padding-bottom: var(--spacing-small);
     }
 

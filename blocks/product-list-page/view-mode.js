@@ -100,6 +100,14 @@ export function createViewModeController({
     return defaultView;
   };
 
+  const syncToggleButtons = (view, root = block) => {
+    root.querySelectorAll('.search__layout-toggle').forEach((button) => {
+      const isActive = button.classList.contains(`search__layout-toggle--${view}`);
+      button.classList.toggle('active', isActive);
+      button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+  };
+
   const setViewMode = (view) => {
     if (showToggle) {
       localStorage.setItem(PLP_VIEW_MODE_STORAGE_KEY, view);
@@ -109,11 +117,7 @@ export function createViewModeController({
     block.classList.toggle('list-view', view === 'list');
     block.dataset.viewMode = view;
 
-    block.querySelectorAll('.search__layout-toggle').forEach((button) => {
-      const isActive = button.classList.contains(`search__layout-toggle--${view}`);
-      button.classList.toggle('active', isActive);
-      button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-    });
+    syncToggleButtons(view);
 
     onViewModeChange?.(view);
   };
@@ -129,6 +133,8 @@ export function createViewModeController({
       ?.addEventListener('click', () => setViewMode('grid'));
     container.querySelector('.search__layout-toggle--list')
       ?.addEventListener('click', () => setViewMode('list'));
+
+    syncToggleButtons(block.dataset.viewMode || getInitialView(), container);
   };
 
   setViewMode(getInitialView());

@@ -33,6 +33,7 @@ import {
   createViewModeController,
   parseListMode,
 } from './view-mode.js';
+import { initFacetAccordions } from './facet-accordion.js';
 import { fetchPlpStoreConfig, getPerPageConfigForView } from './store-config.js';
 import { createPageSizeController, resolvePageSize } from './page-size.js';
 // Initializers
@@ -358,6 +359,8 @@ export default async function decorate(block) {
     $facets.prepend($facetsTitle);
   }
 
+  initFacetAccordions($facets);
+
   const $filterButtonContainer = document.createElement('div');
   $filterButtonContainer.className = 'search__filter-button-container';
   renderFilterButton($filterButtonContainer);
@@ -370,12 +373,20 @@ export default async function decorate(block) {
     $viewFacets.appendChild($mobileToggles);
   }
 
-  if (listModeConfig.showToggle) {
+  // Toolbar order inside .search__product-sort: toggles → page size → sort picker
+  const $sortPicker = $productSort.querySelector('.dropin-picker');
+  if ($sortPicker) {
+    $productSort.insertBefore($pageSizeContainer, $sortPicker);
+    if (listModeConfig.showToggle) {
+      $productSort.insertBefore($desktopToggles, $pageSizeContainer);
+    }
+  } else if (listModeConfig.showToggle) {
     $productSort.prepend($desktopToggles);
-    viewModeController.setViewMode(block.dataset.viewMode);
+    $productSort.appendChild($pageSizeContainer);
+  } else {
+    $productSort.prepend($pageSizeContainer);
   }
 
-  $productSort.prepend($pageSizeContainer);
   pageSizeController = createPageSizeController({
     container: $pageSizeContainer,
     storeConfig,
@@ -383,7 +394,7 @@ export default async function decorate(block) {
     initialPageSize: currentPageSize,
     labels: {
       show: labels.Search?.ShowPerPage || 'Show',
-      perPage: labels.Search?.PerPage || 'per page',
+      perPage: labels.Search?.PerPage || 'Per Page',
     },
     onPageSizeChange: (nextSize) => {
       runSearch({ pageSize: nextSize, currentPage: 1 });
