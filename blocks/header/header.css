@@ -120,7 +120,6 @@ header nav .nav-brand {
   grid-column: 2;
   display: flex;
   justify-content: center;
-  margin-top: -50px;
 }
 
 /* stylelint-disable-next-line no-descending-specificity */
@@ -516,6 +515,11 @@ header nav[aria-expanded='true'] .nav-hamburger-icon::after {
 }
 
 /* ---------- Desktop ---------- */
+@media (min-width: 1366px) {
+  header nav .nav-brand {
+    margin-top: -50px;
+  }
+}
 @media (min-width: 900px) {
   header nav .nav-hamburger {
     display: none;
