@@ -588,6 +588,11 @@ header nav[aria-expanded='true'] .nav-hamburger-icon::after {
     width: 100%;
   }
 
+  header nav .nav-utility-left ul > li:first-child,
+  header nav .nav-utility-left ul > li:nth-child(2) {
+    display: none;
+  }
+
   header nav .nav-utility-left ul {
     justify-content: center;
     flex-wrap: wrap;
