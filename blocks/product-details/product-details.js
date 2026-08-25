@@ -560,18 +560,28 @@ function setMetaTags(product) {
 
 /**
  * Returns the configuration for an image slot.
+ * Ensures params include both width and height so srcset URLs are valid.
  * @param ctx - The context of the slot.
  * @returns The configuration for the image slot.
  */
 function imageSlotConfig(ctx) {
   const { data, defaultImageProps } = ctx;
+  const { width, height } = defaultImageProps;
   return {
     alias: data.sku,
-    imageProps: defaultImageProps,
-
+    imageProps: {
+      ...defaultImageProps,
+      width,
+      height,
+      params: {
+        ...defaultImageProps.params,
+        width,
+        height,
+      },
+    },
     params: {
-      width: defaultImageProps.width,
-      height: defaultImageProps.height,
+      width,
+      height,
     },
   };
 }
