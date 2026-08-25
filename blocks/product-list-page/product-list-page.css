@@ -22,9 +22,18 @@
 
 .block.product-list-page .search__category-title h1 {
     color: var(--color-neutral-900);
-    font: var(--type-headline-1-font);
-    letter-spacing: var(--type-headline-1-letter-spacing);
+    font-family: var(--type-base-font-family);
+    font-size: 34px;
+    font-weight: 400;
+    line-height: 1.15;
+    letter-spacing: 0;
     margin: 0 0 var(--spacing-xsmall);
+}
+
+@media only screen and (min-width: 900px) {
+    .block.product-list-page .search__category-title h1 {
+        font-size: 46px;
+    }
 }
 
 .block.product-list-page .search__result-info {
@@ -70,6 +79,15 @@
     grid-area: facets;
     margin-block-end: var(--spacing-small);
     display: none;
+}
+
+.block.product-list-page .search__facets-title {
+    font-family: var(--type-base-font-family);
+    font-size: 22px;
+    font-weight: 400;
+    margin: 0 0 var(--spacing-small);
+    padding-bottom: var(--spacing-xsmall);
+    border-bottom: 1px solid var(--tfs-border, #e2e2da);
 }
 
 .block.product-list-page .search__facets--visible {
@@ -277,10 +295,14 @@
         flex-wrap: wrap;
         gap: var(--spacing-small);
         justify-content: flex-end;
+        border-bottom: 1px solid var(--tfs-border, #e2e2da);
+        padding-bottom: var(--spacing-small);
     }
 
+    /* Grid/List toggle sits on the far left; page-size + sort cluster right */
     .block.product-list-page .search__layout-toggles--desktop {
         display: flex;
+        margin-right: auto;
     }
 
     .block.product-list-page .search__layout-toggles--mobile {
