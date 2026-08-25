@@ -350,6 +350,14 @@ export default async function decorate(block) {
     })($productList),
   ]);
 
+  // "Filter By" heading above the facets sidebar (matches the source PLP)
+  if ($facets.children.length && !$facets.querySelector('.search__facets-title')) {
+    const $facetsTitle = document.createElement('h2');
+    $facetsTitle.className = 'search__facets-title';
+    $facetsTitle.textContent = labels.Search?.FilterBy || 'Filter By';
+    $facets.prepend($facetsTitle);
+  }
+
   const $filterButtonContainer = document.createElement('div');
   $filterButtonContainer.className = 'search__filter-button-container';
   renderFilterButton($filterButtonContainer);
