@@ -520,6 +520,7 @@ header nav[aria-expanded='true'] .nav-hamburger-icon::after {
     margin-top: -50px;
   }
 }
+
 @media (min-width: 900px) {
   header nav .nav-hamburger {
     display: none;
