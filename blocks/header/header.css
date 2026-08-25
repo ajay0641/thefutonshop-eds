@@ -454,7 +454,7 @@ header nav .nav-hamburger {
 /* stylelint-disable-next-line no-descending-specificity */
 header nav .nav-hamburger button {
   cursor: pointer;
-  height: 22px;
+  height: 28px;
   width: 28px;
   margin: 0;
   border: 0;
@@ -464,47 +464,12 @@ header nav .nav-hamburger button {
   color: inherit;
 }
 
-header nav .nav-hamburger-icon,
-header nav .nav-hamburger-icon::before,
-header nav .nav-hamburger-icon::after {
-  box-sizing: border-box;
+/* Mobile toggle uses the bar (list) icon */
+header nav .nav-hamburger-icon {
   display: block;
-  position: relative;
-  width: 24px;
-  height: 2px;
-  border-radius: 2px;
-  background: currentcolor;
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
-header nav .nav-hamburger-icon::before,
-header nav .nav-hamburger-icon::after {
-  content: '';
-  position: absolute;
-  left: 0;
-}
-
-header nav .nav-hamburger-icon::before {
-  top: -7px;
-}
-
-header nav .nav-hamburger-icon::after {
-  top: 7px;
-}
-
-/* hamburger -> cross when nav open (mobile) */
-header nav[aria-expanded='true'] .nav-hamburger-icon {
-  background: transparent;
-}
-
-header nav[aria-expanded='true'] .nav-hamburger-icon::before {
-  top: 0;
-  transform: rotate(45deg);
-}
-
-header nav[aria-expanded='true'] .nav-hamburger-icon::after {
-  top: 0;
-  transform: rotate(-45deg);
+  width: 26px;
+  height: 26px;
+  background: url('../../icons/bar.svg') center / contain no-repeat;
 }
 
 .overlay {
