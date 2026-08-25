@@ -118,6 +118,23 @@ function buildWidgetAutoBlocks(main) {
 }
 
 /**
+ * Injects a breadcrumb block above PLP/PDP content when enabled via page metadata.
+ * @param {Element} main
+ */
+function buildBreadcrumbBlock(main) {
+  if (main.querySelector('.breadcrumb')) return;
+
+  const productBlock = main.querySelector('.product-list-page, .product-details');
+  if (!productBlock) return;
+
+  const sectionDiv = document.createElement('div');
+  const breadcrumb = document.createElement('div');
+  breadcrumb.className = 'breadcrumb';
+  sectionDiv.append(breadcrumb);
+  main.prepend(sectionDiv);
+}
+
+/**
  * Builds all synthetic blocks in a container element.
  * @param {Element} main The container element
  */
@@ -141,6 +158,7 @@ function buildAutoBlocks(main) {
       });
     }
     buildWidgetAutoBlocks(main);
+    buildBreadcrumbBlock(main);
   } catch (error) {
     console.error('Auto Blocking failed', error);
   }

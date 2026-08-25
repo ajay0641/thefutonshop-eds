@@ -121,12 +121,14 @@ function getSortParam(sort) {
 export function getSearchStateFromUrl(url) {
   const q = url.searchParams.get('q') ?? '';
   const page = url.searchParams.get('page');
+  const limit = url.searchParams.get('limit');
   const sort = url.searchParams.get('sort');
   const filter = url.searchParams.get('filter');
 
   return {
     phrase: q,
     currentPage: page ? Number(page) : 1,
+    pageSize: limit ? Number(limit) : null,
     sort: parseSort(sort),
     filter: parseFilter(filter),
   };
@@ -138,10 +140,10 @@ export function getSearchStateFromUrl(url) {
  * Mutates the URL in place; then use url.toString() or history.pushState to apply.
  * Omits default values (page 1, empty sort/filter) to avoid unnecessary URL churn.
  * @param {URL} url - URL to update (e.g. new URL(window.location.href))
- * @param {{ phrase?: string, currentPage?: number, sort?: Array, filter?: Array }} request
+ * @param {object} request - Search request (phrase, currentPage, pageSize, sort, filter)
  *   Search request from the discovery API; only set params are written to the URL.
  */
-export function applySearchStateToUrl(url, request) {
+export function applySearchStateToUrl(url, request, { defaultPageSize } = {}) {
   if (request?.phrase) {
     url.searchParams.set('q', request.phrase);
   } else {
@@ -152,6 +154,12 @@ export function applySearchStateToUrl(url, request) {
     url.searchParams.set('page', String(request.currentPage));
   } else {
     url.searchParams.delete('page');
+  }
+
+  if (request?.pageSize && (!defaultPageSize || request.pageSize !== defaultPageSize)) {
+    url.searchParams.set('limit', String(request.pageSize));
+  } else {
+    url.searchParams.delete('limit');
   }
 
   const sortValue = getSortParam(request?.sort);
