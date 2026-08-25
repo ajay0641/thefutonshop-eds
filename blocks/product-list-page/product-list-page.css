@@ -3,12 +3,28 @@
     display: grid;
     margin-block: var(--spacing-small);
     grid-template-areas:
+        "category-title"
         "result-info"
         "view-facets"
         "facets"
         "product-sort"
         "product-list"
         "pagination";
+}
+
+.block.product-list-page .search__category-title {
+    grid-area: category-title;
+}
+
+.block.product-list-page .search__category-title:empty {
+    display: none;
+}
+
+.block.product-list-page .search__category-title h1 {
+    color: var(--color-neutral-900);
+    font: var(--type-headline-1-font);
+    letter-spacing: var(--type-headline-1-letter-spacing);
+    margin: 0 0 var(--spacing-xsmall);
 }
 
 .block.product-list-page .search__result-info {
@@ -26,13 +42,13 @@
     margin-block-end: var(--spacing-small);
 }
 
-.block.product-list-page .search__view-facets button {
+.block.product-list-page .search__view-facets .search__filter-button-container button {
     justify-content: start;
-    width: 100%;
     position: relative;
+    width: 100%;
 }
 
-.block.product-list-page .search__view-facets button[data-count]::after {
+.block.product-list-page .search__view-facets .search__filter-button-container button[data-count]::after {
     align-items: center;
     background-color: var(--color-brand-700);
     border-radius: 50%;
@@ -81,10 +97,127 @@
     gap: var(--spacing-xxsmall);
 }
 
+/* Grid / list view toggles (matches thefutonshop.com PLP toolbar) */
+.block.product-list-page .search__layout-toggles {
+    align-items: center;
+    display: flex;
+    flex-shrink: 0;
+    gap: 20px;
+    margin-right: auto;
+}
+
+.block.product-list-page .search__layout-toggles--desktop {
+    display: none;
+}
+
+.block.product-list-page .search__layout-toggle {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    color: var(--color-neutral-700);
+    cursor: pointer;
+    display: inline-flex;
+    font: var(--type-body-2-default-font);
+    gap: 6px;
+    letter-spacing: var(--type-body-2-default-letter-spacing);
+    padding: 0;
+}
+
+.block.product-list-page .search__layout-toggle:hover,
+.block.product-list-page .search__layout-toggle:focus-visible {
+    color: var(--color-neutral-800);
+}
+
+.block.product-list-page .search__layout-toggle.active {
+    color: var(--color-neutral-800);
+    font: var(--type-body-2-strong-font);
+    letter-spacing: var(--type-body-2-strong-letter-spacing);
+}
+
+.block.product-list-page .search__layout-toggle__icon {
+    display: block;
+    flex-shrink: 0;
+    height: 24px;
+    width: auto;
+}
+
+.block.product-list-page .search__layout-toggle__icon--active {
+    display: none;
+}
+
+.block.product-list-page .search__layout-toggle.active .search__layout-toggle__icon--default {
+    display: none;
+}
+
+.block.product-list-page .search__layout-toggle.active .search__layout-toggle__icon--active {
+    display: block;
+}
+
+.block.product-list-page .search__layout-toggle__text {
+    line-height: 1;
+}
+
+.block.product-list-page .search__page-size-container {
+    align-items: center;
+    display: flex;
+}
+
+.block.product-list-page .search__page-size {
+    align-items: center;
+    display: inline-flex;
+}
+
+.block.product-list-page .search__page-size-label {
+    align-items: center;
+    color: var(--color-neutral-800);
+    display: inline-flex;
+    font: var(--type-body-2-default-font);
+    gap: var(--spacing-xxsmall);
+    letter-spacing: var(--type-body-2-default-letter-spacing);
+    white-space: nowrap;
+}
+
+.block.product-list-page .search__page-size-select {
+    appearance: none;
+    background-color: var(--color-neutral-50);
+    border: 1px solid var(--color-neutral-400);
+    border-radius: var(--shape-border-radius-2);
+    color: var(--color-neutral-800);
+    cursor: pointer;
+    font: var(--type-body-2-strong-font);
+    min-width: 4rem;
+    padding: 8px 32px 8px 12px;
+}
+
+/* List view: single column product grid */
+.block.product-list-page.list-view .product-discovery-product-list__grid {
+    grid-template-columns: 1fr !important;
+}
+
+/* List view: horizontal product cards on tablet+ */
+@media only screen and (min-width: 768px) {
+    .block.product-list-page.list-view .dropin-product-item-card {
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        width: 100%;
+    }
+
+    .block.product-list-page.list-view .dropin-product-item-card__image-container {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .block.product-list-page.list-view .dropin-product-item-card__content {
+        grid-column: 2;
+        grid-row: 1;
+    }
+}
+
 /* Empty State */
 
 .block.product-list-page.product-list-page--empty .search__wrapper {
     grid-template-areas:
+        "category-title"
         "product-list";
     grid-template-columns: 1fr;
 }
@@ -98,9 +231,31 @@
 }
 
 /* Media Queries */
+@media only screen and (max-width: 767px) {
+    .block.product-list-page .search__view-facets {
+        align-items: center;
+        display: flex;
+        gap: var(--spacing-xsmall);
+        justify-content: space-between;
+    }
+
+    .block.product-list-page .search__filter-button-container {
+        flex: 1;
+    }
+
+    .block.product-list-page .search__layout-toggles--mobile {
+        display: flex;
+    }
+
+    .block.product-list-page:not(.list-view) .product-discovery-product-list__grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
 @media only screen and (min-width: 768px) {
     .block.product-list-page .search__wrapper {
         grid-template-areas:
+            "category-title category-title"
             "result-info product-sort"
             "facets product-list"
             ". pagination";
@@ -117,7 +272,18 @@
     }
 
     .block.product-list-page .search__product-sort {
+        align-items: center;
         display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-small);
         justify-content: flex-end;
+    }
+
+    .block.product-list-page .search__layout-toggles--desktop {
+        display: flex;
+    }
+
+    .block.product-list-page .search__layout-toggles--mobile {
+        display: none;
     }
 }

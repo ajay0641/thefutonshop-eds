@@ -202,3 +202,101 @@ export function getMenuCategoriesFetcher(parentId = '2') {
 export async function prefetchMenuCategories(parentId = '2') {
   await fetchMenuCategories(parentId).catch(() => {});
 }
+
+const GET_BREADCRUMB_CATEGORIES_QUERY = `
+  query GetBreadcrumbCategories(
+    $ids: [String!]!
+    $roles: [String!]!
+    $depth: Int!
+    $startLevel: Int!
+  ) {
+    categories(
+      ids: $ids
+      roles: $roles
+      subtree: {
+        depth: $depth
+        startLevel: $startLevel
+      }
+    ) {
+      id
+      name
+      urlPath
+      parentId
+    }
+  }
+`;
+
+/** @type {Map<string, import('@ajay0641/tfs-menu/api/menu/menu').CategoryItem[]>} */
+const breadcrumbCategoryCache = new Map();
+
+/**
+ * Flat category list for breadcrumb ancestor resolution (deeper tree than menu).
+ * @param {string} [parentId='2']
+ * @returns {Promise<import('@ajay0641/tfs-menu/api/menu/menu').CategoryItem[]>}
+ */
+async function fetchBreadcrumbCategories(parentId = '2') {
+  const cacheKey = String(parentId);
+  if (breadcrumbCategoryCache.has(cacheKey)) {
+    return breadcrumbCategoryCache.get(cacheKey);
+  }
+
+  await import('./initializers/menu.js');
+
+  const promise = CS_FETCH_GRAPHQL.fetchGraphQl(GET_BREADCRUMB_CATEGORIES_QUERY, {
+    method: 'POST',
+    variables: {
+      ids: [cacheKey],
+      roles: ['active'],
+      depth: 5,
+      startLevel: 1,
+    },
+  }).then(({ data, errors }) => {
+    if (errors?.length) {
+      throw new Error(errors[0].message);
+    }
+    return data?.categories || [];
+  });
+
+  breadcrumbCategoryCache.set(cacheKey, promise);
+  return promise;
+}
+
+/**
+ * Resolves breadcrumb ancestors for a category urlPath (root → leaf).
+ * @param {string} urlPath
+ * @param {string} [parentId='2']
+ * @returns {Promise<Array<{ name: string, urlPath: string, id: string }>>}
+ */
+export async function getCategoryAncestors(urlPath, parentId = '2') {
+  if (!urlPath) return [];
+
+  const categories = await fetchBreadcrumbCategories(parentId);
+  if (!categories.length) return [];
+
+  const byId = new Map(categories.map((category) => [String(category.id), category]));
+  const byUrlPath = new Map(
+    categories
+      .filter((category) => category.urlPath)
+      .map((category) => [category.urlPath, category]),
+  );
+
+  const target = byUrlPath.get(urlPath);
+  if (!target) return [];
+
+  /** @type {Array<{ name: string, urlPath: string, id: string }>} */
+  const chain = [];
+  let current = target;
+
+  while (current) {
+    if (current.urlPath) {
+      chain.unshift({
+        name: current.name,
+        urlPath: current.urlPath,
+        id: String(current.id),
+      });
+    }
+    current = current.parentId ? byId.get(String(current.parentId)) : null;
+  }
+
+  return chain;
+}
