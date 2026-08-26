@@ -85,6 +85,15 @@ function bindEvents(block) {
  */
 export default function decorate(block) {
   const rows = [...block.children];
+
+  // The hero's first image is the page's LCP candidate — load it eagerly and
+  // hint the browser to fetch it at high priority for a faster LCP.
+  const firstImg = block.querySelector('img');
+  if (firstImg) {
+    firstImg.setAttribute('loading', 'eager');
+    firstImg.setAttribute('fetchpriority', 'high');
+  }
+
   // A single row keeps the static hero markup untouched.
   if (rows.length < 2) return;
 
