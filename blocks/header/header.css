@@ -11,6 +11,10 @@
   box-sizing: border-box;
 }
 
+header.header-wrapper {
+  min-height: 149px;
+}
+
 header .nav-wrapper {
   background-color: #fff;
   width: 100%;
@@ -492,6 +496,10 @@ header nav .nav-hamburger-icon {
 }
 
 @media (min-width: 900px) {
+  header.header-wrapper {
+    min-height: 179px;
+  }
+  
   header nav .nav-hamburger {
     display: none;
     visibility: hidden;
