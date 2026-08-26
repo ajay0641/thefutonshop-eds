@@ -6,11 +6,7 @@ import Pagination from '@dropins/storefront-product-discovery/containers/Paginat
 import { render as provider } from '@dropins/storefront-product-discovery/render.js';
 import { Button, Icon, provider as UI } from '@dropins/tools/components.js';
 import { search } from '@dropins/storefront-product-discovery/api.js';
-// Wishlist Dropin
-import { WishlistToggle } from '@dropins/storefront-wishlist/containers/WishlistToggle.js';
-import { render as wishlistRender } from '@dropins/storefront-wishlist/render.js';
-// Cart Dropin
-import * as cartApi from '@dropins/storefront-cart/api.js';
+// Cart Dropin — handlers loaded via tfs-product-card-handlers.js
 import { tryRenderAemAssetsImage } from '@dropins/tools/lib/aem/assets.js';
 // Event Bus
 import { events } from '@dropins/tools/event-bus.js';
@@ -36,9 +32,14 @@ import {
 import { initFacetAccordions } from './facet-accordion.js';
 import { fetchPlpStoreConfig, getPerPageConfigForView } from './store-config.js';
 import { createPageSizeController, resolvePageSize } from './page-size.js';
+import { createProductCardSlots } from '../../scripts/product-card.js';
+import {
+  createTfsProductCardHandlers,
+  requiresTfsPdpConfiguration,
+} from '../../scripts/tfs-product-card-handlers.js';
+
 // Initializers
 import '../../scripts/initializers/search.js';
-import '../../scripts/initializers/wishlist.js';
 
 /** Default PLP card image size (matches Product Discovery SearchResults defaults). */
 const PLP_IMAGE_DIMENSIONS = {
@@ -237,8 +238,52 @@ export default async function decorate(block) {
     });
   }
 
-  const requiresPdpConfiguration = (product) => product.typename === 'ComplexProductView'
-    || product.attributes?.some((attr) => attr.name === 'ac_giftcard');
+  const requiresPdpConfiguration = requiresTfsPdpConfiguration;
+
+  const cardHandlers = await createTfsProductCardHandlers(block);
+
+  const productCardLabels = {
+    fromLabel: labels.Search?.From || 'From:',
+    saveLabel: labels.Search?.SaveUpTo || 'Save up to {percent}%',
+    reviewsLabel: labels.Search?.Reviews || '{count} Reviews',
+    reviewLabel: labels.Search?.Review || '{count} Review',
+    addToCartLabel: labels.Global?.AddProductToCart || 'Add to cart',
+    addToWishlistLabel: labels.Global?.AddToWishList || 'Add to wish list',
+  };
+
+  const productCardSlots = createProductCardSlots({
+    routeProduct: (product) => getProductLink(product.urlKey, product.sku),
+    labels: productCardLabels,
+    requiresPdpConfiguration,
+    onAddToCartClick: cardHandlers.onAddToCartClick,
+    onWishlistClick: cardHandlers.onWishlistClick,
+    renderProductImage: (ctx) => {
+      const {
+        product, defaultImageProps, replaceWith, wrapper,
+      } = ctx;
+      const width = defaultImageProps.width || PLP_IMAGE_DIMENSIONS.width;
+      const height = defaultImageProps.height || PLP_IMAGE_DIMENSIONS.height;
+      const anchorWrapper = document.createElement('a');
+      anchorWrapper.href = getProductLink(product.urlKey, product.sku);
+      anchorWrapper.setAttribute('aria-label', product.name || product.sku);
+
+      tryRenderAemAssetsImage(
+        { replaceWith },
+        {
+          alias: product.sku,
+          imageProps: {
+            ...defaultImageProps,
+            width,
+            height,
+            params: { ...defaultImageProps.params, width, height },
+          },
+          wrapper: anchorWrapper,
+          params: { width, height },
+        },
+      );
+
+    },
+  });
 
   const renderFilterButton = (target) => {
     UI.render(Button, {
@@ -257,33 +302,6 @@ export default async function decorate(block) {
   if (listModeConfig.showToggle) {
     viewModeController.mountToggles($desktopToggles);
   }
-
-  const getAddToCartButton = (product) => {
-    const productName = product.name || product.sku;
-    const addToCartLabel = `${labels.Global?.AddProductToCart} ${productName}`;
-
-    if (requiresPdpConfiguration(product)) {
-      const button = document.createElement('div');
-      UI.render(Button, {
-        'aria-label': addToCartLabel,
-        children: labels.Global?.AddProductToCart,
-        icon: Icon({ source: 'Cart' }),
-        href: getProductLink(product.urlKey, product.sku),
-        variant: 'primary',
-      })(button);
-      return button;
-    }
-    const button = document.createElement('div');
-    UI.render(Button, {
-      'aria-label': addToCartLabel,
-      children: labels.Global?.AddProductToCart,
-      icon: Icon({ source: 'Cart' }),
-      onClick: () => cartApi.addProductsToCart([{ sku: product.sku, quantity: 1 }]),
-      variant: 'primary',
-      disabled: !product.inStock,
-    })(button);
-    return button;
-  };
 
   const $pageSizeContainer = document.createElement('div');
   $pageSizeContainer.className = 'search__page-size-container';
@@ -307,47 +325,7 @@ export default async function decorate(block) {
       routeProduct: (product) => getProductLink(product.urlKey, product.sku),
       imageWidth: PLP_IMAGE_DIMENSIONS.width,
       imageHeight: PLP_IMAGE_DIMENSIONS.height,
-      slots: {
-        ProductImage: (ctx) => {
-          const { product, defaultImageProps } = ctx;
-          const width = defaultImageProps.width || PLP_IMAGE_DIMENSIONS.width;
-          const height = defaultImageProps.height || PLP_IMAGE_DIMENSIONS.height;
-          const anchorWrapper = document.createElement('a');
-          anchorWrapper.href = getProductLink(product.urlKey, product.sku);
-          anchorWrapper.setAttribute('aria-label', product.name || product.sku);
-
-          // defaultImageProps.params often only includes width; without height,
-          // srcset URLs become ?height=NaN and Commerce media URLs fail to load.
-          tryRenderAemAssetsImage(ctx, {
-            alias: product.sku,
-            imageProps: {
-              ...defaultImageProps,
-              width,
-              height,
-              params: { ...defaultImageProps.params, width, height },
-            },
-            wrapper: anchorWrapper,
-            params: { width, height },
-          });
-        },
-        ProductActions: (ctx) => {
-          const actionsWrapper = document.createElement('div');
-          actionsWrapper.className = 'product-discovery-product-actions';
-          // Add to Cart Button
-          const addToCartBtn = getAddToCartButton(ctx.product);
-          addToCartBtn.className = 'product-discovery-product-actions__add-to-cart';
-          // Wishlist Button
-          const $wishlistToggle = document.createElement('div');
-          $wishlistToggle.classList.add('product-discovery-product-actions__wishlist-toggle');
-          wishlistRender.render(WishlistToggle, {
-            product: ctx.product,
-            variant: 'tertiary',
-          })($wishlistToggle);
-          actionsWrapper.appendChild(addToCartBtn);
-          actionsWrapper.appendChild($wishlistToggle);
-          ctx.replaceWith(actionsWrapper);
-        },
-      },
+      slots: productCardSlots,
     })($productList),
   ]);
 
@@ -419,6 +397,10 @@ export default async function decorate(block) {
     } else {
       $filterButton?.removeAttribute('data-count');
     }
+
+    window.requestAnimationFrame(() => {
+      cardHandlers.resyncWishlist();
+    });
   }, { eager: true });
 
   // Listen for search results (event is fired after the block is rendered; eager: false)

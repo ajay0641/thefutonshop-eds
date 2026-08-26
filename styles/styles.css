@@ -13,6 +13,7 @@
 /* stylelint-disable no-empty-source */
 :root, .dropin-design {
   /* Adobe Commerce Dropin design tokens */
+  --color-text-primary: #000;
   --color-brand-300: #6d6d6d;
   --color-brand-500: #454545;
   --color-brand-600: #383838;
@@ -176,7 +177,7 @@ body {
   line-height: 1.5;
   letter-spacing: var(--type-body-1-default-letter-spacing);
   margin: 0;
-  color: var(--color-neutral-800);
+  color: var(--color-text-primary);
   background-color: var(--background-color);
   display: grid;
   grid-template-rows: auto 1fr auto;
