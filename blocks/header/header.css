@@ -497,9 +497,9 @@ header nav .nav-hamburger-icon {
 
 @media (min-width: 900px) {
   header.header-wrapper {
-    min-height: 179px;
+    min-height: 178px;
   }
-  
+
   header nav .nav-hamburger {
     display: none;
     visibility: hidden;

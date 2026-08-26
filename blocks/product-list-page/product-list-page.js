@@ -2,7 +2,6 @@
 import SearchResults from '@dropins/storefront-product-discovery/containers/SearchResults.js';
 import Facets from '@dropins/storefront-product-discovery/containers/Facets.js';
 import SortBy from '@dropins/storefront-product-discovery/containers/SortBy.js';
-import Pagination from '@dropins/storefront-product-discovery/containers/Pagination.js';
 import { render as provider } from '@dropins/storefront-product-discovery/render.js';
 import { Button, Icon, provider as UI } from '@dropins/tools/components.js';
 import { search } from '@dropins/storefront-product-discovery/api.js';
@@ -32,6 +31,8 @@ import {
 import { initFacetAccordions } from './facet-accordion.js';
 import { fetchPlpStoreConfig, getPerPageConfigForView } from './store-config.js';
 import { createPageSizeController, resolvePageSize } from './page-size.js';
+import { createLoadMoreController } from './load-more.js';
+import { createScrollPageUrlSync } from './scroll-page-url.js';
 import { createProductCardSlots } from '../../scripts/product-card.js';
 import {
   createTfsProductCardHandlers,
@@ -89,6 +90,10 @@ export default async function decorate(block) {
   let currentPageSize;
   /** @type {ReturnType<typeof createPageSizeController>|null} */
   let pageSizeController = null;
+  /** @type {ReturnType<typeof createLoadMoreController>|null} */
+  let loadMoreController = null;
+  /** @type {ReturnType<typeof createScrollPageUrlSync>|null} */
+  let scrollPageUrlSync = null;
   /** @type {(overrides?: object) => Promise<void>} */
   let runSearch;
 
@@ -101,7 +106,9 @@ export default async function decorate(block) {
       const nextSize = pageSizeController.syncToViewMode();
       if (nextSize !== currentPageSize) {
         currentPageSize = nextSize;
-        runSearch({ pageSize: nextSize, currentPage: 1 });
+        loadMoreController?.reset();
+        scrollPageUrlSync?.reset();
+        runSearch({ pageSize: nextSize });
       }
     },
   });
@@ -165,6 +172,7 @@ export default async function decorate(block) {
   }
 
   const searchState = getSearchStateFromUrl(new URL(window.location.href));
+  const initialLoadMorePage = Math.max(1, searchState.loadMorePage || 1);
   currentPageSize = resolvePageSize({
     storeConfig,
     viewMode: getViewMode(),
@@ -174,7 +182,6 @@ export default async function decorate(block) {
   runSearch = async (overrides = {}) => {
     const urlState = getSearchStateFromUrl(new URL(window.location.href));
     const pageSize = overrides.pageSize ?? currentPageSize;
-    const currentPage = overrides.currentPage ?? 1;
     const sort = overrides.sort ?? (urlState.sort.length
       ? urlState.sort
       : [{ attribute: 'position', direction: 'DESC' }]);
@@ -186,7 +193,7 @@ export default async function decorate(block) {
     const visibilityFilter = { attribute: 'visibility', in: ['Search', 'Catalog, Search'] };
     const request = {
       phrase,
-      currentPage,
+      currentPage: 1,
       pageSize,
       sort,
       filter: [visibilityFilter, ...filter],
@@ -212,12 +219,12 @@ export default async function decorate(block) {
   if (shouldCanonicalizeCategoryUrl(normalizedUrl, categoryMeta)) {
     normalizedUrl = canonicalizeCategoryUrl(normalizedUrl, categoryMeta);
     applySearchStateToUrl(normalizedUrl, initialUrlState, {
-      defaultPageSize: getDefaultPageSize(),
+      loadMorePage: initialLoadMorePage,
     });
     window.history.replaceState({}, '', normalizedUrl.toString());
   } else {
     applySearchStateToUrl(normalizedUrl, initialUrlState, {
-      defaultPageSize: getDefaultPageSize(),
+      loadMorePage: initialLoadMorePage,
     });
     if (normalizedUrl.href !== window.location.href) {
       window.history.replaceState({}, '', normalizedUrl.toString());
@@ -225,15 +232,14 @@ export default async function decorate(block) {
   }
 
   // Request search based on the page type on block load
+  const initialFetchSize = currentPageSize * initialLoadMorePage;
   if (config.urlpath) {
     await runSearch({
-      currentPage: searchState.currentPage,
-      pageSize: currentPageSize,
+      pageSize: initialFetchSize,
     });
   } else {
     await runSearch({
-      currentPage: searchState.currentPage,
-      pageSize: currentPageSize,
+      pageSize: initialFetchSize,
       phrase: searchState.phrase,
     });
   }
@@ -259,7 +265,7 @@ export default async function decorate(block) {
     onWishlistClick: cardHandlers.onWishlistClick,
     renderProductImage: (ctx) => {
       const {
-        product, defaultImageProps, replaceWith, wrapper,
+        product, defaultImageProps, replaceWith,
       } = ctx;
       const width = defaultImageProps.width || PLP_IMAGE_DIMENSIONS.width;
       const height = defaultImageProps.height || PLP_IMAGE_DIMENSIONS.height;
@@ -281,7 +287,6 @@ export default async function decorate(block) {
           params: { width, height },
         },
       );
-
     },
   });
 
@@ -309,14 +314,6 @@ export default async function decorate(block) {
   await Promise.all([
     // Sort By
     provider.render(SortBy, {})($productSort),
-
-    // Pagination
-    provider.render(Pagination, {
-      onPageChange: () => {
-        // scroll to the top of the page
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      },
-    })($pagination),
 
     // Facets
     provider.render(Facets, {})($facets),
@@ -375,8 +372,28 @@ export default async function decorate(block) {
       perPage: labels.Search?.PerPage || 'Per Page',
     },
     onPageSizeChange: (nextSize) => {
-      runSearch({ pageSize: nextSize, currentPage: 1 });
+      loadMoreController?.reset();
+      scrollPageUrlSync?.reset();
+      runSearch({ pageSize: nextSize });
     },
+  });
+
+  loadMoreController = createLoadMoreController({
+    container: $pagination,
+    getBatchSize: () => currentPageSize,
+    initialLoadMorePage,
+    onSearchContextChange: () => scrollPageUrlSync?.reset(),
+    labels: {
+      loadMore: labels.Search?.LoadMore || 'Load More',
+      loading: labels.Search?.Loading || 'Loading...',
+    },
+  });
+
+  scrollPageUrlSync = createScrollPageUrlSync({
+    productListRoot: $productList,
+    getBatchSize: () => currentPageSize,
+    getLastRequest: () => loadMoreController?.getLastRequest() ?? null,
+    buildUrl: () => canonicalizeCategoryUrl(new URL(window.location.href), categoryMeta),
   });
 
   // Listen for search results (event is fired before the block is rendered; eager: true)
@@ -400,16 +417,23 @@ export default async function decorate(block) {
 
     window.requestAnimationFrame(() => {
       cardHandlers.resyncWishlist();
+      scrollPageUrlSync?.refresh();
     });
   }, { eager: true });
 
   // Listen for search results (event is fired after the block is rendered; eager: false)
-  // URL is owned by this project; update it when search state changes.
+  // URL is owned by this project; update sort/filter/q; ?p= reflects visible batch while scrolling.
   events.on('search/result', (payload) => {
     const url = canonicalizeCategoryUrl(new URL(window.location.href), categoryMeta);
-    applySearchStateToUrl(url, payload.request, { defaultPageSize: getDefaultPageSize() });
+    const visiblePage = scrollPageUrlSync?.measureNow() ?? 1;
+    applySearchStateToUrl(url, payload.request, { loadMorePage: visiblePage });
     if (url.href !== window.location.href) {
-      window.history.pushState({}, '', url.toString());
+      const useReplaceState = loadMoreController?.consumeLoadMoreNavigation();
+      if (useReplaceState) {
+        window.history.replaceState({}, '', url.toString());
+      } else {
+        window.history.pushState({}, '', url.toString());
+      }
     }
   }, { eager: false });
 }
