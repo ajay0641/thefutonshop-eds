@@ -120,14 +120,17 @@ function getSortParam(sort) {
  */
 export function getSearchStateFromUrl(url) {
   const q = url.searchParams.get('q') ?? '';
-  const page = url.searchParams.get('page');
+  const p = url.searchParams.get('p') ?? url.searchParams.get('page');
   const limit = url.searchParams.get('limit');
   const sort = url.searchParams.get('sort');
   const filter = url.searchParams.get('filter');
 
+  const loadMorePage = p ? Math.max(1, Number(p) || 1) : 1;
+
   return {
     phrase: q,
-    currentPage: page ? Number(page) : 1,
+    currentPage: loadMorePage,
+    loadMorePage,
     pageSize: limit ? Number(limit) : null,
     sort: parseSort(sort),
     filter: parseFilter(filter),
@@ -141,25 +144,23 @@ export function getSearchStateFromUrl(url) {
  * Omits default values (page 1, empty sort/filter) to avoid unnecessary URL churn.
  * @param {URL} url - URL to update (e.g. new URL(window.location.href))
  * @param {object} request - Search request (phrase, currentPage, pageSize, sort, filter)
- *   Search request from the discovery API; only set params are written to the URL.
+ * @param {{ loadMorePage?: number }} [options]
+ *   loadMorePage: virtual page for load-more (?p=); omit limit from URL.
  */
-export function applySearchStateToUrl(url, request, { defaultPageSize } = {}) {
+export function applySearchStateToUrl(url, request, { loadMorePage = 1 } = {}) {
   if (request?.phrase) {
     url.searchParams.set('q', request.phrase);
   } else {
     url.searchParams.delete('q');
   }
 
-  if (request?.currentPage && request.currentPage > 1) {
-    url.searchParams.set('page', String(request.currentPage));
-  } else {
-    url.searchParams.delete('page');
-  }
+  url.searchParams.delete('page');
+  url.searchParams.delete('limit');
 
-  if (request?.pageSize && (!defaultPageSize || request.pageSize !== defaultPageSize)) {
-    url.searchParams.set('limit', String(request.pageSize));
+  if (loadMorePage > 1) {
+    url.searchParams.set('p', String(loadMorePage));
   } else {
-    url.searchParams.delete('limit');
+    url.searchParams.delete('p');
   }
 
   const sortValue = getSortParam(request?.sort);

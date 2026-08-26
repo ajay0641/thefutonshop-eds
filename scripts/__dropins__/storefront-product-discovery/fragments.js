@@ -35,6 +35,8 @@ const e=`
       inStock
       url
       urlKey
+      shortDescription
+      description
       attributes(roles: []) {
         name
         label

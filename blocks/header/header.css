@@ -317,7 +317,6 @@ header nav .nav-tools {
   display: flex;
   gap: 14px;
   align-items: center;
-  z-index: 3;
 }
 
 header nav .nav-tools-wrapper > button {
@@ -391,7 +390,7 @@ header nav .nav-tools .nav-dropdown-button {
 }
 
 header nav .nav-tools-panel {
-  z-index: 100;
+  z-index: 999;
   position: absolute;
   box-shadow: var(--shape-shadow-2);
   background: #fff;
@@ -443,7 +442,7 @@ header nav .nav-search .search-bar-result .product-discovery-product-list__foote
   }
 
   .cart-mini-cart:has(.cart-empty-cart) {
-    max-height: calc(100vh - 120px);
+    max-height: calc(100vh - 100px);
   }
 }
 
@@ -497,9 +496,9 @@ header nav .nav-hamburger-icon {
 
 @media (min-width: 900px) {
   header.header-wrapper {
-    min-height: 179px;
+    min-height: 178px;
   }
-  
+
   header nav .nav-hamburger {
     display: none;
     visibility: hidden;
@@ -682,10 +681,6 @@ header nav .nav-hamburger-icon {
     position: relative;
   }
 
-  header nav .nav-tools-panel {
-    top: calc(12px + 96px);
-  }
-
   header nav .minicart-panel {
     width: 398px;
   }
@@ -749,7 +744,7 @@ header nav .nav-hamburger-icon {
   overflow-y: auto;
 
   @supports (height: 100dvh) {
-    max-height: calc(100dvh - 120px);
+    max-height: calc(100dvh - 96px);
   }
 }
 

@@ -26,7 +26,7 @@
   --tfs-card-font: Georgia, "Times New Roman", Times, serif;
   --tfs-card-text: #000;
   --tfs-card-muted: #5c5c5c;
-  --tfs-card-sale: #6b2c28;
+  --tfs-card-sale: #9b1504;
   --tfs-card-star: #c5a371;
   --tfs-card-star-empty: #d9d2c5;
 
@@ -232,7 +232,7 @@
 }
 
 .tfs-product-slider .tfsproductslider-product-card__action-btn:focus-visible {
-  outline: 2px solid var(--tfs-card-sale, #6b2c28);
+  outline: 2px solid var(--tfs-card-sale, #9b1504);
   outline-offset: 2px;
 }
 
