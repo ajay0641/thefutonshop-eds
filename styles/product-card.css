@@ -88,6 +88,20 @@
   gap: 8px;
   opacity: 1;
   pointer-events: auto;
+  transition: opacity 0.2s ease;
+}
+
+@media (width >= 900px) and (hover: hover) {
+  .block.product-list-page .tfsproductslider-product-card__actions {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .block.product-list-page .dropin-product-item-card:hover .tfsproductslider-product-card__actions,
+  .block.product-list-page .dropin-product-item-card:focus-within .tfsproductslider-product-card__actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .block.product-list-page .tfsproductslider-product-card__action-btn {
