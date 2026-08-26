@@ -55,6 +55,30 @@ function stripHtml(html) {
 }
 
 /** @param {object} product */
+function getProductDescription(product) {
+  if (product.shortDescription) {
+    const text = stripHtml(product.shortDescription);
+    if (text) return text;
+  }
+
+  const fromAttribute = getAttributeValue(
+    product.attributes,
+    ['short_description', 'description'],
+  );
+  if (fromAttribute) {
+    const text = stripHtml(String(fromAttribute));
+    if (text) return text;
+  }
+
+  if (product.description) {
+    const text = stripHtml(product.description);
+    if (text) return text;
+  }
+
+  return undefined;
+}
+
+/** @param {object} product */
 export function parseProductCardData(product) {
   const isComplex = product.typename === 'ComplexProductView' || !!product.priceRange;
   const minPrice = extractPriceAmount(
@@ -95,6 +119,7 @@ export function parseProductCardData(product) {
     rating,
     reviewCount,
     subtitle,
+    description: getProductDescription(product),
     addToCartAllowed: product.addToCartAllowed,
     inStock: product.inStock,
   };
@@ -381,7 +406,20 @@ export function createProductCardSlots({
     ProductPrice: (ctx) => {
       const data = parseProductCardData(ctx.product);
       const pricing = buildPricing(data, labels);
-      if (pricing) ctx.replaceWith(pricing);
+
+      const wrap = document.createElement('div');
+      wrap.className = `${CARD}__price-block`;
+
+      if (pricing) wrap.appendChild(pricing);
+
+      if (data.description) {
+        const description = document.createElement('p');
+        description.className = `${CARD}__description`;
+        description.textContent = data.description;
+        wrap.appendChild(description);
+      }
+
+      if (wrap.childElementCount) ctx.replaceWith(wrap);
     },
 
     ProductActions: (ctx) => {

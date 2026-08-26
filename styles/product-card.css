@@ -5,7 +5,7 @@
   --tfs-card-font: Georgia, "Times New Roman", Times, serif;
   --tfs-card-text: #000;
   --tfs-card-muted: #5c5c5c;
-  --tfs-card-sale: #6b2c28;
+  --tfs-card-sale: #9b1504;
   --tfs-card-star: #c5a371;
   --tfs-card-star-empty: #d9d2c5;
 }
@@ -34,7 +34,7 @@
   gap: 8px;
   padding: 14px 2px 0;
   text-align: left;
-  justify-content: flex-start;
+  align-items: flex-start;
 }
 
 .block.product-list-page .dropin-product-item-card__action {
@@ -201,6 +201,35 @@
   margin-top: -4px;
 }
 
+.block.product-list-page .tfsproductslider-product-card__price-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+}
+
+.block.product-list-page:not(.list-view) .tfsproductslider-product-card__description {
+  display: none;
+}
+
+.block.product-list-page.list-view .tfsproductslider-product-card__subtitle {
+  display: none;
+}
+
+.block.product-list-page.list-view .tfsproductslider-product-card__description {
+  display: -webkit-box;
+  margin: 10px 0 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  font-family: var(--tfs-card-font);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+}
+
 .block.product-list-page .tfsproductslider-product-card__title-link {
   color: inherit;
   text-decoration: none;
@@ -274,6 +303,7 @@
 
 .block.product-list-page .tfsproductslider-product-card__regular {
   text-decoration: line-through;
+  font-weight: 400;
 }
 
 .block.product-list-page .tfsproductslider-product-card__final {

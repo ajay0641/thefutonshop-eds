@@ -325,12 +325,15 @@
 .block.product-list-page.list-view .product-discovery-product-list__grid {
     grid-template-columns: 1fr !important;
 }
+.block.product-list-page.list-view .dropin-product-item-card__content {
+    padding-left: 20px;
+}
 
 /* List view: horizontal product cards on tablet+ */
 @media only screen and (min-width: 768px) {
     .block.product-list-page.list-view .dropin-product-item-card {
         display: grid;
-        grid-template-columns: 240px 1fr;
+        grid-template-columns: 397px 1fr;
         width: 100%;
     }
 

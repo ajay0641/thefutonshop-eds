@@ -47,8 +47,39 @@ export function createLoadMoreController({
   let pendingLoadMore = false;
   let loadMorePage = Math.max(1, initialLoadMorePage);
   let savedScrollY = 0;
+  let scrollAnchor = null;
+  let scrollAnchorTop = 0;
   let shouldRestoreScroll = false;
   let navigatedViaLoadMore = false;
+
+  const captureScrollAnchor = () => {
+    savedScrollY = window.scrollY;
+    const grid = container.closest('.product-list-page')
+      ?.querySelector('.product-discovery-product-list__grid');
+    const cards = grid?.querySelectorAll('.dropin-product-item-card') ?? [];
+    const anchorIndex = Math.max(0, displayedCount - 1);
+    scrollAnchor = cards[anchorIndex] ?? null;
+    scrollAnchorTop = scrollAnchor?.getBoundingClientRect().top ?? 0;
+  };
+
+  const restoreScroll = () => {
+    const apply = () => {
+      if (scrollAnchor?.isConnected) {
+        const nextTop = scrollAnchor.getBoundingClientRect().top;
+        const delta = nextTop - scrollAnchorTop;
+        if (Math.abs(delta) > 1) {
+          window.scrollBy({ top: delta, left: 0, behavior: 'auto' });
+        }
+      } else if (savedScrollY > 0) {
+        window.scrollTo({ top: savedScrollY, left: 0, behavior: 'auto' });
+      }
+    };
+
+    requestAnimationFrame(() => {
+      apply();
+      requestAnimationFrame(apply);
+    });
+  };
 
   const buttonWrapper = document.createElement('div');
   buttonWrapper.className = 'search__load-more';
@@ -65,14 +96,6 @@ export function createLoadMoreController({
     buttonEl.textContent = loading && pendingLoadMore ? loadingLabel : loadMoreLabel;
   };
 
-  const restoreScroll = () => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: savedScrollY, left: 0, behavior: 'auto' });
-      });
-    });
-  };
-
   const handleLoadMore = async (event) => {
     event?.preventDefault?.();
     if (!lastRequest || loading || displayedCount >= totalCount) return;
@@ -85,7 +108,7 @@ export function createLoadMoreController({
     navigatedViaLoadMore = true;
     shouldRestoreScroll = true;
     loading = true;
-    savedScrollY = window.scrollY;
+    captureScrollAnchor();
     updateButton();
 
     try {
@@ -119,10 +142,6 @@ export function createLoadMoreController({
   const loadingSub = events.on('search/loading', (isLoading) => {
     loading = isLoading;
     if (!isLoading) {
-      if (shouldRestoreScroll) {
-        restoreScroll();
-        shouldRestoreScroll = false;
-      }
       pendingLoadMore = false;
     }
     updateButton();
@@ -141,6 +160,12 @@ export function createLoadMoreController({
     lastRequest = payload.request;
     totalCount = payload.result?.totalCount ?? 0;
     displayedCount = payload.result?.items?.length ?? 0;
+
+    if (shouldRestoreScroll) {
+      restoreScroll();
+      shouldRestoreScroll = false;
+    }
+
     updateButton();
   }, { eager: true });
 

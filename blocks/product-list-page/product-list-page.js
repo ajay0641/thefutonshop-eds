@@ -1,14 +1,13 @@
 // Product Discovery Dropins
-import SearchResults from '@dropins/storefront-product-discovery/containers/SearchResults.js';
 import Facets from '@dropins/storefront-product-discovery/containers/Facets.js';
 import SortBy from '@dropins/storefront-product-discovery/containers/SortBy.js';
 import { render as provider } from '@dropins/storefront-product-discovery/render.js';
-import { Button, Icon, provider as UI } from '@dropins/tools/components.js';
 import { search } from '@dropins/storefront-product-discovery/api.js';
-// Cart Dropin — handlers loaded via tfs-product-card-handlers.js
+import { Button, Icon, provider as UI } from '@dropins/tools/components.js';
 import { tryRenderAemAssetsImage } from '@dropins/tools/lib/aem/assets.js';
 // Event Bus
 import { events } from '@dropins/tools/event-bus.js';
+import PlpSearchResults from './plp-search-results.js';
 // AEM
 import { readBlockConfig } from '../../scripts/aem.js';
 import {
@@ -318,7 +317,7 @@ export default async function decorate(block) {
     // Facets
     provider.render(Facets, {})($facets),
     // Product List
-    provider.render(SearchResults, {
+    provider.render(PlpSearchResults, {
       routeProduct: (product) => getProductLink(product.urlKey, product.sku),
       imageWidth: PLP_IMAGE_DIMENSIONS.width,
       imageHeight: PLP_IMAGE_DIMENSIONS.height,

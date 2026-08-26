@@ -45,6 +45,33 @@ function copyScopedPackages(scope) {
 // Adobe drop-ins
 copyScopedPackages('@dropins');
 
+/**
+ * Product search fragment omits shortDescription by default; PLP list view needs it.
+ */
+function patchProductDiscoveryFragment() {
+  const fragmentsPath = path.join(
+    dropinsDir,
+    'storefront-product-discovery',
+    'fragments.js',
+  );
+  if (!fs.existsSync(fragmentsPath)) {
+    return;
+  }
+
+  let content = fs.readFileSync(fragmentsPath, 'utf8');
+  if (content.includes('shortDescription')) {
+    return;
+  }
+
+  content = content.replace(
+    '      urlKey\n      attributes(roles: []) {',
+    '      urlKey\n      shortDescription\n      description\n      attributes(roles: []) {',
+  );
+  fs.writeFileSync(fragmentsPath, content);
+}
+
+patchProductDiscoveryFragment();
+
 // Custom drop-ins under this project scope (add packages in package.json only;
 // they land as scripts/__dropins__/{package-name} — still add import map + block separately)
 copyScopedPackages('@ajay0641');
