@@ -1,6 +1,25 @@
 import { readBlockConfig } from '../../scripts/aem.js';
-import { getProductSku, fetchIndex, IS_UE } from '../../scripts/commerce.js';
+import { getProductSku, IS_UE } from '../../scripts/commerce.js';
 import { loadFragment } from '../fragment/fragment.js';
+
+/**
+ * Fetches the enrichment index, tolerating a missing index file.
+ * The core fetchIndex() calls resp.json() without checking resp.ok, so a 404
+ * (no enrichment content published) throws "Unexpected end of JSON input".
+ * Enrichment is optional, so return an empty index instead of throwing.
+ * @param {string} indexFile Index path without extension
+ * @returns {Promise<{data: Array}>}
+ */
+async function fetchEnrichmentIndex(indexFile) {
+  try {
+    const resp = await fetch(`/${indexFile}.json?limit=500&offset=0`);
+    if (!resp.ok) return { data: [] };
+    const json = await resp.json();
+    return { data: Array.isArray(json.data) ? json.data : [] };
+  } catch (error) {
+    return { data: [] };
+  }
+}
 
 export default async function decorate(block) {
   const { type, position } = readBlockConfig(block);
@@ -37,7 +56,8 @@ export default async function decorate(block) {
       filters.positions = position;
     }
 
-    const index = await fetchIndex('enrichment/enrichment');
+    const index = await fetchEnrichmentIndex('enrichment/enrichment');
+    if (!index.data.length) return;
     const matchingFragments = index.data
       .filter((fragment) => Object.keys(filters).every((filterKey) => {
         const values = JSON.parse(fragment[filterKey]);
