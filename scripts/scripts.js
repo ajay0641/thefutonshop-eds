@@ -217,6 +217,46 @@ export function decorateMain(main) {
 }
 
 /**
+ * Prioritizes the LCP image so it is fetched immediately.
+ * The delivered markup ships the first image as loading="lazy" with no
+ * fetchpriority, so the browser's preload scanner defers it. Upgrade it during
+ * the eager phase (before blocks/layout trigger lazy fetches) and inject a
+ * <link rel="preload"> so the request starts as early as possible — this is
+ * what makes the LCP image "discoverable in the initial document".
+ * @param {Element} main The main element
+ */
+function prioritizeLCPImage(main) {
+  const firstSection = main.querySelector('.section');
+  const img = firstSection?.querySelector('img');
+  if (!img) return;
+
+  img.setAttribute('loading', 'eager');
+  img.setAttribute('fetchpriority', 'high');
+
+  // Avoid duplicate preloads (e.g. on soft navigations).
+  if (document.head.querySelector('link[rel="preload"][data-lcp]')) return;
+
+  const picture = img.closest('picture');
+  const link = document.createElement('link');
+  link.rel = 'preload';
+  link.as = 'image';
+  link.setAttribute('fetchpriority', 'high');
+  link.dataset.lcp = '';
+
+  // Prefer the responsive sources so the browser preloads the right variant.
+  const source = picture?.querySelector('source[type="image/webp"]');
+  const srcset = source?.getAttribute('srcset');
+  if (srcset) {
+    link.setAttribute('imagesrcset', srcset);
+    const sizes = source.getAttribute('sizes');
+    if (sizes) link.setAttribute('imagesizes', sizes);
+  } else {
+    link.href = img.currentSrc || img.src;
+  }
+  document.head.appendChild(link);
+}
+
+/**
  * Loads everything needed to get to LCP.
  * @param {Element} doc The container element
  */
@@ -231,6 +271,7 @@ async function loadEager(doc) {
       await prefetchMenuCategories();
       decorateMain(main);
       applyTemplates(doc);
+      prioritizeLCPImage(main);
       await loadCommerceEager();
     } catch (e) {
       console.error('Error initializing commerce configuration:', e);
