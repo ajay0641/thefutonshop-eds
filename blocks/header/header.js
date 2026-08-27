@@ -33,13 +33,17 @@ async function loadNavFragment() {
   const navMeta = getMetadata('nav');
   const navPath = navMeta ? new URL(navMeta, window.location).pathname : '/nav';
 
-  // local dev / aem up
-  let fragment = await loadFragment('/content/nav');
-  if (fragment) return fragment;
+  // On local `aem up` the working copy is served from /content/nav.plain.html;
+  // try it first there so uncommitted edits show. Skipped on other hosts to
+  // avoid a 404 for a path that only exists locally.
+  const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  if (isLocal) {
+    const localFragment = await loadFragment('/content/nav');
+    if (localFragment) return localFragment;
+  }
 
-  // DA / EDS production
-  fragment = await loadFragment(navPath);
-  return fragment;
+  // DA / EDS (preview + production)
+  return loadFragment(navPath);
 }
 
 /**

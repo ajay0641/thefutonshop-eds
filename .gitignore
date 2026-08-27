@@ -17,6 +17,7 @@ scripts/__dropins__/**/*.map
 !AGENTS.md
 migration-work/footer-validation/
 migration-work/navigation-validation/
+.migration/
 
 .hlx/.da-token.json
 
