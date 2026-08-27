@@ -419,11 +419,19 @@ export function createProductCardSlots({
         wrap.appendChild(description);
       }
 
-      if (wrap.childElementCount) ctx.replaceWith(wrap);
+      // Always replace with a real element — the dropin reads tagName on the
+      // returned node, so an empty wrap (no price/description) must still be a
+      // DOM element, never a DocumentFragment.
+      ctx.replaceWith(wrap);
     },
 
     ProductActions: (ctx) => {
-      ctx.replaceWith(document.createDocumentFragment());
+      // Actions are rendered inside ProductImage; render an empty element here.
+      // Must be an element (has tagName) — a DocumentFragment crashes the dropin
+      // slot renderer (o.tagName.toLowerCase()).
+      const empty = document.createElement('div');
+      empty.className = `${CARD}__actions-slot`;
+      ctx.replaceWith(empty);
     },
   };
 }
