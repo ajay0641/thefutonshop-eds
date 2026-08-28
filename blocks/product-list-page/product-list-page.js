@@ -22,12 +22,14 @@ import {
   shouldCanonicalizeCategoryUrl,
 } from '../../scripts/commerce.js';
 import { getCategoryAncestors } from '../../scripts/menu-data.js';
+import { withProductImageFallback } from '../../scripts/product-image.js';
 import { getSearchStateFromUrl, applySearchStateToUrl } from './search-url.js';
 import {
   createViewModeController,
   parseListMode,
 } from './view-mode.js';
 import { initFacetAccordions } from './facet-accordion.js';
+import { renderPriceRangeFacetSlot } from './price-range-slider.js';
 import { fetchPlpStoreConfig, getPerPageConfigForView } from './store-config.js';
 import { createPageSizeController, resolvePageSize } from './page-size.js';
 import { createLoadMoreController } from './load-more.js';
@@ -272,15 +274,17 @@ export default async function decorate(block) {
       anchorWrapper.href = getProductLink(product.urlKey, product.sku);
       anchorWrapper.setAttribute('aria-label', product.name || product.sku);
 
+      const imageProps = withProductImageFallback(defaultImageProps, product);
+
       tryRenderAemAssetsImage(
         { replaceWith },
         {
           alias: product.sku,
           imageProps: {
-            ...defaultImageProps,
+            ...imageProps,
             width,
             height,
-            params: { ...defaultImageProps.params, width, height },
+            params: { ...imageProps.params, width, height },
           },
           wrapper: anchorWrapper,
           params: { width, height },
@@ -315,7 +319,11 @@ export default async function decorate(block) {
     provider.render(SortBy, {})($productSort),
 
     // Facets
-    provider.render(Facets, {})($facets),
+    provider.render(Facets, {
+      slots: {
+        Facet: renderPriceRangeFacetSlot,
+      },
+    })($facets),
     // Product List
     provider.render(PlpSearchResults, {
       routeProduct: (product) => getProductLink(product.urlKey, product.sku),
@@ -395,6 +403,34 @@ export default async function decorate(block) {
     buildUrl: () => canonicalizeCategoryUrl(new URL(window.location.href), categoryMeta),
   });
 
+  let restoringFromHistory = false;
+
+  const handlePopState = () => {
+    restoringFromHistory = true;
+    const urlState = getSearchStateFromUrl(new URL(window.location.href));
+    const loadMorePage = Math.max(1, urlState.loadMorePage || 1);
+
+    loadMoreController?.reset();
+    scrollPageUrlSync?.reset();
+
+    const pageSize = resolvePageSize({
+      storeConfig,
+      viewMode: getViewMode(),
+      urlLimit: urlState.pageSize,
+    }) || currentPageSize;
+
+    currentPageSize = pageSize;
+
+    runSearch({
+      pageSize: pageSize * loadMorePage,
+      filter: urlState.filter,
+      sort: urlState.sort.length ? urlState.sort : undefined,
+      phrase: urlState.phrase || undefined,
+    });
+  };
+
+  window.addEventListener('popstate', handlePopState);
+
   // Listen for search results (event is fired before the block is rendered; eager: true)
   events.on('search/result', (payload) => {
     const totalCount = payload.result?.totalCount || 0;
@@ -423,6 +459,11 @@ export default async function decorate(block) {
   // Listen for search results (event is fired after the block is rendered; eager: false)
   // URL is owned by this project; update sort/filter/q; ?p= reflects visible batch while scrolling.
   events.on('search/result', (payload) => {
+    if (restoringFromHistory) {
+      restoringFromHistory = false;
+      return;
+    }
+
     const url = canonicalizeCategoryUrl(new URL(window.location.href), categoryMeta);
     const visiblePage = scrollPageUrlSync?.measureNow() ?? 1;
     applySearchStateToUrl(url, payload.request, { loadMorePage: visiblePage });
