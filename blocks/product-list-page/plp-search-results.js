@@ -15,6 +15,7 @@ import {
   P as PLP_SCOPE,
 } from '@dropins/storefront-product-discovery/api.js';
 import { useText } from '@dropins/tools/i18n.js';
+import { getPrimaryProductImage } from '../../scripts/product-image.js';
 
 /** @param {string} html */
 function decodeHtml(html) {
@@ -127,10 +128,11 @@ function PlpSearchResults(props) {
   };
 
   const renderImage = (product, index) => {
+    const primaryImage = getPrimaryProductImage(product);
     const imageProps = {
       loading: index < 8 ? 'eager' : 'lazy',
-      src: product.images?.[0]?.url || '',
-      alt: product.images?.[0]?.label || '',
+      src: primaryImage.url,
+      alt: primaryImage.label,
       width: imageWidth,
       height: imageHeight,
       params: { width: imageWidth },

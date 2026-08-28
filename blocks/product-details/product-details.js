@@ -37,6 +37,11 @@ import {
 import { IMAGES_SIZES } from '../../scripts/initializers/pdp.js';
 import '../../scripts/initializers/cart.js';
 import '../../scripts/initializers/wishlist.js';
+import {
+  ensureProductImages,
+  getPrimaryProductImageUrl,
+  withProductImageFallback,
+} from '../../scripts/product-image.js';
 
 /**
  * Checks if the page has prerendered product JSON-LD data
@@ -344,6 +349,7 @@ export default async function decorate(block) {
 
   // Lifecycle Events
   events.on('pdp/data', (data) => {
+    ensureProductImages(data);
     isOutOfStock = data?.inStock === false;
     addToCart.setProps((prev) => ({ ...prev, disabled: isOutOfStock }));
   }, { eager: true });
@@ -434,7 +440,6 @@ async function setJsonLdProduct(product) {
     urlKey,
     price,
     priceRange,
-    images,
     attributes,
   } = product;
   const amount = priceRange?.minimum?.final?.amount || price?.final?.amount;
@@ -473,7 +478,7 @@ async function setJsonLdProduct(product) {
     '@type': 'Product',
     name,
     description,
-    image: images[0]?.url,
+    image: getPrimaryProductImageUrl(product),
     offers: [],
     productID: sku,
     brand: {
@@ -551,7 +556,7 @@ function setMetaTags(product) {
   createMetaTag('og:title', product.metaTitle || product.name, 'property');
   createMetaTag('og:url', window.location.href, 'property');
   const mainImage = product?.images?.filter((image) => image.roles.includes('thumbnail'))[0];
-  const metaImage = mainImage?.url || product?.images[0]?.url;
+  const metaImage = mainImage?.url || getPrimaryProductImageUrl(product);
   createMetaTag('og:image', metaImage, 'property');
   createMetaTag('og:image:secure_url', metaImage, 'property');
   createMetaTag('product:price:amount', price.value, 'property');
@@ -566,15 +571,16 @@ function setMetaTags(product) {
  */
 function imageSlotConfig(ctx) {
   const { data, defaultImageProps } = ctx;
-  const { width, height } = defaultImageProps;
+  const imageProps = withProductImageFallback(defaultImageProps, data);
+  const { width, height } = imageProps;
   return {
     alias: data.sku,
     imageProps: {
-      ...defaultImageProps,
+      ...imageProps,
       width,
       height,
       params: {
-        ...defaultImageProps.params,
+        ...imageProps.params,
         width,
         height,
       },

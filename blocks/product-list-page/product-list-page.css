@@ -113,6 +113,7 @@
     letter-spacing: 0.5px;
     padding: 12px 2px;
     text-transform: uppercase;
+    margin: 0;
 }
 
 .block.product-list-page .search__facets .product-discovery-facet__header::after {
@@ -130,12 +131,141 @@
 }
 
 .block.product-list-page .search__facets .product-discovery-facet__bucket {
-    padding: 4px 2px;
+    padding: 5px 0;
+}
+
+.block.product-list-page .search__facets .product-discovery-facet__bucket .dropin-checkbox__checkbox-icon {
+    align-items: flex-start;
+}
+
+.block.product-list-page .search__facets .product-discovery-facet__bucket span.dropin-checkbox__box {
+    margin: 2px 0;
 }
 
 .block.product-list-page .search__facets .product-discovery-facet--collapsed .product-discovery-facet__bucket,
 .block.product-list-page .search__facets .product-discovery-facet--collapsed > .dropin-button {
     display: none;
+}
+
+.block.product-list-page .search__price-range {
+    padding: 8px 4px 12px;
+}
+
+.block.product-list-page .search__price-range__values {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--spacing-small);
+    font-family: var(--type-base-font-family);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-neutral-800);
+}
+
+.block.product-list-page .search__price-range__track {
+    position: relative;
+    height: 32px;
+    margin-inline: 2px;
+}
+
+.block.product-list-page .search__price-range__rail,
+.block.product-list-page .search__price-range__fill {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 2px;
+    border-radius: 999px;
+    pointer-events: none;
+}
+
+.block.product-list-page .search__price-range__rail {
+    left: 0;
+    right: 0;
+    background: var(--color-neutral-300);
+    z-index: 0;
+}
+
+.block.product-list-page .search__price-range__fill {
+    background: var(--color-neutral-900);
+    z-index: 1;
+}
+
+.block.product-list-page .search__price-range__input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 32px;
+    margin: 0;
+    padding: 0;
+    pointer-events: none;
+    background: transparent;
+    appearance: none;
+}
+
+.block.product-list-page .search__price-range__input::-webkit-slider-runnable-track {
+    height: 2px;
+    background: transparent;
+    border: none;
+}
+
+.block.product-list-page .search__price-range__input::-webkit-slider-thumb {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    margin-top: -9px;
+    border: 3px solid var(--color-neutral-100);
+    border-radius: 50%;
+    background: var(--color-neutral-900);
+    box-shadow: 0 0 0 1px var(--color-neutral-900), 0 2px 5px rgb(0 0 0 / 20%);
+    pointer-events: auto;
+    cursor: grab;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.block.product-list-page .search__price-range__input:active::-webkit-slider-thumb {
+    cursor: grabbing;
+    box-shadow: 0 0 0 1px var(--color-neutral-900), 0 3px 8px rgb(0 0 0 / 28%);
+    transform: scale(1.08);
+}
+
+.block.product-list-page .search__price-range__input:focus-visible::-webkit-slider-thumb {
+    outline: 2px solid var(--color-brand-700);
+    outline-offset: 2px;
+}
+
+.block.product-list-page .search__price-range__input::-moz-range-track {
+    height: 2px;
+    background: transparent;
+    border: none;
+}
+
+.block.product-list-page .search__price-range__input::-moz-range-thumb {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--color-neutral-100);
+    border-radius: 50%;
+    background: var(--color-neutral-900);
+    box-shadow: 0 0 0 1px var(--color-neutral-900), 0 2px 5px rgb(0 0 0 / 20%);
+    pointer-events: auto;
+    cursor: grab;
+}
+
+.block.product-list-page .search__price-range__input:active::-moz-range-thumb {
+    cursor: grabbing;
+    box-shadow: 0 0 0 1px var(--color-neutral-900), 0 3px 8px rgb(0 0 0 / 28%);
+}
+
+.block.product-list-page .search__price-range__input:focus-visible::-moz-range-thumb {
+    outline: 2px solid var(--color-brand-700);
+    outline-offset: 2px;
+}
+
+.block.product-list-page .search__price-range__input--max {
+    z-index: 2;
+}
+
+.block.product-list-page .search__price-range__input--min {
+    z-index: 1;
 }
 
 .block.product-list-page .search__facets--visible {
@@ -403,7 +533,7 @@
 
     .block.product-list-page .search__facets {
         display: unset;
-        margin-right: var(--spacing-small);
+        margin-right: var(--spacing-medium);
     }
 
     .block.product-list-page .search__product-sort {

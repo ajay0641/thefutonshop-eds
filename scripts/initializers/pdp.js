@@ -1,7 +1,8 @@
 import { initializers } from '@dropins/tools/initializer.js';
+import { events } from '@dropins/tools/event-bus.js';
 import { Image, provider as UI } from '@dropins/tools/components.js';
 import { initialize, setEndpoint, fetchProductData } from '@dropins/storefront-pdp/api.js';
-import { isAemAssetsEnabled, tryGenerateAemAssetsOptimizedUrl } from '@dropins/tools/lib/aem/assets.js';
+import { isAemAssetsEnabled, tryGenerateAemAssetsOptimizedUrl, isAemAssetsUrl } from '@dropins/tools/lib/aem/assets.js';
 import { initializeDropin } from './index.js';
 import {
   CS_FETCH_GRAPHQL,
@@ -13,11 +14,19 @@ import {
   preloadFile,
 } from '../commerce.js';
 import { getMetadata } from '../aem.js';
+import { ensureProductImages } from '../product-image.js';
 
 export const IMAGES_SIZES = {
   width: 960,
   height: 1191,
 };
+
+function toAbsoluteImageUrl(url) {
+  if (!url) return url;
+  if (url.startsWith('//')) return `${window.location.protocol}${url}`;
+  if (url.startsWith('/')) return `${window.location.origin}${url}`;
+  return url;
+}
 
 /**
  * Extracts the main product image URL from JSON-LD or meta tags
@@ -76,6 +85,9 @@ await initializeDropin(async () => {
   // Inherit Fetch GraphQL Instance (Catalog Service)
   setEndpoint(CS_FETCH_GRAPHQL);
 
+  // Ensure gallery receives a placeholder when catalog images are missing
+  events.on('pdp/data', ensureProductImages, { eager: true });
+
   // Preload PDP assets immediately when this module is imported
   preloadPDPAssets();
 
@@ -117,28 +129,34 @@ await initializeDropin(async () => {
 })();
 
 async function preloadImageMiddleware(data) {
-  const image = data?.images?.[0]?.url?.replace(/^https?:/, '');
+  ensureProductImages(data);
+  const imageUrl = data?.images?.[0]?.url;
+  if (!imageUrl) return data;
 
-  if (image) {
-    let url = image;
-    let imageParams = {
-      ...IMAGES_SIZES,
+  const protocolRelativeUrl = imageUrl.replace(/^https?:/, '');
+  let url = protocolRelativeUrl;
+  let imageParams = {
+    ...IMAGES_SIZES,
+  };
+
+  const absoluteImageUrl = toAbsoluteImageUrl(protocolRelativeUrl);
+
+  if (isAemAssetsEnabled() && isAemAssetsUrl(absoluteImageUrl)) {
+    url = tryGenerateAemAssetsOptimizedUrl(protocolRelativeUrl, data.sku, {});
+    imageParams = {
+      ...imageParams,
+      crop: undefined,
+      fit: undefined,
+      auto: undefined,
     };
-    if (isAemAssetsEnabled()) {
-      url = tryGenerateAemAssetsOptimizedUrl(image, data.sku, {});
-      imageParams = {
-        ...imageParams,
-        crop: undefined,
-        fit: undefined,
-        auto: undefined,
-      };
-    }
-    await UI.render(Image, {
-      src: url,
-      ...IMAGES_SIZES.mobile,
-      params: imageParams,
-      loading: 'eager',
-    })(document.createElement('div'));
   }
+
+  await UI.render(Image, {
+    src: url,
+    ...IMAGES_SIZES.mobile,
+    params: imageParams,
+    loading: 'eager',
+  })(document.createElement('div'));
+
   return data;
 }

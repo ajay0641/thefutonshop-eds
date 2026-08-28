@@ -10,6 +10,7 @@ import {
 } from '../../scripts/aem.js';
 import { loadFragment } from '../fragment/fragment.js';
 import { fetchPlaceholders, getProductLink, rootLink } from '../../scripts/commerce.js';
+import { withProductImageFallback } from '../../scripts/product-image.js';
 
 import renderAuthCombine from './renderAuthCombine.js';
 import { renderAuthDropdown } from './renderAuthDropdown.js';
@@ -379,12 +380,13 @@ export default async function decorate(block) {
       slots: {
         ProductImage: (ctx) => {
           const { product, defaultImageProps } = ctx;
+          const imageProps = withProductImageFallback(defaultImageProps, product);
           const anchorWrapper = document.createElement('a');
           anchorWrapper.href = getProductLink(product.urlKey, product.sku);
 
           tryRenderAemAssetsImage(ctx, {
             alias: product.sku,
-            imageProps: defaultImageProps,
+            imageProps,
             wrapper: anchorWrapper,
             params: {
               width: defaultImageProps.width,
