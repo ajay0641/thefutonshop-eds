@@ -11,17 +11,14 @@ import * as pdpApi from '@dropins/storefront-pdp/api.js';
 import { render as pdpRendered } from '@dropins/storefront-pdp/render.js';
 import { render as wishlistRender } from '@dropins/storefront-wishlist/render.js';
 
-import { WishlistToggle } from '@dropins/storefront-wishlist/containers/WishlistToggle.js';
 import { WishlistAlert } from '@dropins/storefront-wishlist/containers/WishlistAlert.js';
 
 // Containers
 import ProductHeader from '@dropins/storefront-pdp/containers/ProductHeader.js';
-import ProductPrice from '@dropins/storefront-pdp/containers/ProductPrice.js';
 import ProductShortDescription from '@dropins/storefront-pdp/containers/ProductShortDescription.js';
 import ProductOptions from '@dropins/storefront-pdp/containers/ProductOptions.js';
 import ProductQuantity from '@dropins/storefront-pdp/containers/ProductQuantity.js';
 import ProductDescription from '@dropins/storefront-pdp/containers/ProductDescription.js';
-import ProductAttributes from '@dropins/storefront-pdp/containers/ProductAttributes.js';
 import ProductGallery from '@dropins/storefront-pdp/containers/ProductGallery.js';
 import ProductGiftCardOptions from '@dropins/storefront-pdp/containers/ProductGiftCardOptions.js';
 
@@ -31,7 +28,16 @@ import {
   setJsonLd,
   fetchPlaceholders,
   getProductLink,
+  checkIsAuthenticated,
+  CORE_FETCH_GRAPHQL,
 } from '../../scripts/commerce.js';
+import {
+  showWishlistErrorToast,
+  showWishlistLoginToast,
+  showWishlistSuccessToast,
+} from '../../scripts/components/tfs-wishlist-toast/tfs-wishlist-toast.js';
+import { showWishlistAuthModal } from '../../scripts/wishlist-auth-modal.js';
+import { getUserTokenCookie } from '../../scripts/initializers/index.js';
 
 // Initializers
 import { IMAGES_SIZES } from '../../scripts/initializers/pdp.js';
@@ -42,6 +48,10 @@ import {
   getPrimaryProductImageUrl,
   withProductImageFallback,
 } from '../../scripts/product-image.js';
+import {
+  formatProductPrice,
+  parseProductCardData,
+} from '../../scripts/product-card.js';
 
 /**
  * Checks if the page has prerendered product JSON-LD data
@@ -76,14 +86,249 @@ function updateAddToCartButtonText(addToCartInstance, inCart, labels) {
   }
 }
 
-/**
- * Formats numeric attribute values for display (e.g., "10.000000" → "10").
- * Non-numeric values are returned as-is.
- */
-function formatNumericAttributeValue(value) {
-  const trimmed = value.trim();
-  if (!/^[+-]?\d+(\.\d+)?$/.test(trimmed)) return value;
-  return new Intl.NumberFormat(document.documentElement.lang).format(Number(trimmed));
+function updateStockBadge(stockEl, inStock, labels) {
+  if (!stockEl) return;
+  stockEl.classList.toggle('product-details__stock--available', inStock);
+  stockEl.classList.toggle('product-details__stock--unavailable', !inStock);
+  const label = inStock
+    ? (labels.inStockLabel || 'In stock')
+    : (labels.outOfStockLabel || 'Out of stock');
+  stockEl.innerHTML = `<span>${label.toUpperCase()}</span>`;
+}
+
+function stripHtml(html) {
+  return html.replace(/<[^>]*>/g, '').trim();
+}
+
+function updateShortDescriptionVisibility(shortEl, product) {
+  if (!shortEl || !product) return;
+  const shortText = stripHtml(product.shortDescription || '');
+  const shouldHide = !shortText
+    || shortText.toLowerCase() === (product.name || '').toLowerCase();
+  shortEl.classList.toggle('product-details__short-description--hidden', shouldHide);
+}
+
+function layoutHeaderMeta(headerEl, wishlistEl) {
+  const pdpHeader = headerEl?.querySelector('.pdp-header');
+  const sku = pdpHeader?.querySelector('.pdp-header__sku');
+  if (!pdpHeader || !sku || !wishlistEl) return;
+
+  let meta = pdpHeader.querySelector('.product-details__header-meta');
+  if (!meta) {
+    meta = document.createElement('div');
+    meta.className = 'product-details__header-meta';
+    pdpHeader.append(meta);
+  }
+  meta.replaceChildren(sku, wishlistEl);
+}
+
+function initPdpTabs(block) {
+  const tabList = block.querySelector('.product-details__tab-list');
+  if (!tabList) return;
+
+  const tabs = [...tabList.querySelectorAll('[role="tab"]:not([hidden])')];
+  const panels = [...block.querySelectorAll('.product-details__tab-panel')];
+
+  const activateTab = (activeTab) => {
+    const target = activeTab.dataset.tab;
+    tabs.forEach((tab) => {
+      const isActive = tab === activeTab;
+      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      tab.classList.toggle('is-active', isActive);
+      tab.tabIndex = isActive ? 0 : -1;
+    });
+    panels.forEach((panel) => {
+      const isActive = panel.dataset.tab === target;
+      panel.classList.toggle('is-active', isActive);
+      panel.hidden = !isActive;
+    });
+  };
+
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => activateTab(tab));
+    tab.addEventListener('keydown', (event) => {
+      const index = tabs.indexOf(tab);
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        activateTab(tabs[(index + 1) % tabs.length]);
+        tabs[(index + 1) % tabs.length].focus();
+      } else if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        activateTab(tabs[(index - 1 + tabs.length) % tabs.length]);
+        tabs[(index - 1 + tabs.length) % tabs.length].focus();
+      }
+    });
+  });
+}
+
+function computeSavePercent(finalPrice, regularPrice) {
+  if (
+    typeof finalPrice === 'number'
+    && typeof regularPrice === 'number'
+    && regularPrice > finalPrice
+    && regularPrice > 0
+  ) {
+    return Math.round(((regularPrice - finalPrice) / regularPrice) * 100);
+  }
+  return undefined;
+}
+
+function parsePdpPricingData(product) {
+  const prices = product?.prices;
+  if (prices?.visible !== false && prices?.final) {
+    const finalAmount = prices.final.minimumAmount ?? prices.final.amount;
+    const regularAmount = prices.regular?.minimumAmount ?? prices.regular?.amount;
+    const currency = prices.final.currency ?? prices.regular?.currency ?? 'USD';
+    const finalPrice = typeof finalAmount === 'number' ? finalAmount : undefined;
+    const regularPrice = typeof regularAmount === 'number' ? regularAmount : undefined;
+    const hasRange = prices.final.minimumAmount != null
+      && prices.final.maximumAmount != null
+      && prices.final.minimumAmount !== prices.final.maximumAmount;
+
+    return {
+      finalPrice,
+      regularPrice,
+      currency,
+      isOnSale: typeof finalPrice === 'number'
+        && typeof regularPrice === 'number'
+        && regularPrice > finalPrice,
+      isPriceRange: hasRange,
+      savePercent: computeSavePercent(finalPrice, regularPrice),
+    };
+  }
+
+  return parseProductCardData(product);
+}
+
+function renderPdpPricing(priceEl, product, labels) {
+  if (!priceEl || !product) return;
+  priceEl.replaceChildren();
+
+  const data = parsePdpPricingData(product);
+  if (typeof data.finalPrice !== 'number') return;
+
+  const pricing = document.createElement('div');
+  pricing.className = 'product-details__pricing';
+
+  const row = document.createElement('div');
+  row.className = 'product-details__price-row';
+
+  if (data.isPriceRange) {
+    const from = document.createElement('span');
+    from.className = 'product-details__from';
+    from.textContent = `${labels.fromLabel || 'From'}:`;
+    row.appendChild(from);
+  }
+
+  const final = document.createElement('span');
+  final.className = `product-details__final${data.isOnSale ? ' product-details__final--sale' : ''}`;
+  final.textContent = formatProductPrice(data.finalPrice, data.currency);
+  row.appendChild(final);
+
+  if (data.isOnSale && typeof data.regularPrice === 'number') {
+    const regular = document.createElement('span');
+    regular.className = 'product-details__regular';
+    regular.textContent = formatProductPrice(data.regularPrice, data.currency);
+    row.appendChild(regular);
+  }
+
+  if (data.savePercent && data.savePercent > 0) {
+    const save = document.createElement('span');
+    save.className = 'product-details__save';
+    save.textContent = (labels.saveLabel || 'Save {percent}%')
+      .replace('{percent}', String(data.savePercent));
+    row.appendChild(save);
+  }
+
+  pricing.appendChild(row);
+  priceEl.appendChild(pricing);
+}
+
+function syncWishlistAuthHeaders(wishlistApi) {
+  const token = getUserTokenCookie();
+  if (checkIsAuthenticated() && token) {
+    wishlistApi.setFetchGraphQlHeader('Authorization', `Bearer ${token}`);
+  } else {
+    wishlistApi.removeFetchGraphQlHeader('Authorization');
+  }
+}
+
+function updatePdpWishlistButton(btn, wishlistApi) {
+  if (!btn) return;
+  const values = pdpApi.getProductConfigurationValues();
+  const sku = values?.sku || events.lastPayload('pdp/data')?.sku;
+  if (!sku || !checkIsAuthenticated()) {
+    btn.classList.remove('is-active');
+    btn.setAttribute('aria-pressed', 'false');
+    return;
+  }
+  const inWishlist = !!wishlistApi.findInPersistedAllWishlistItems(sku);
+  btn.classList.toggle('is-active', inWishlist);
+  btn.setAttribute('aria-pressed', inWishlist ? 'true' : 'false');
+}
+
+async function setupPdpWishlist(wishlistEl) {
+  const wishlistApi = await import('@dropins/storefront-wishlist/api.js');
+  wishlistApi.setEndpoint(CORE_FETCH_GRAPHQL);
+  syncWishlistAuthHeaders(wishlistApi);
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'product-details__wishlist-btn';
+  btn.setAttribute('aria-label', 'Add to wishlist');
+  btn.setAttribute('aria-pressed', 'false');
+  btn.innerHTML = '<span class="product-details__wishlist-icon" aria-hidden="true"></span>';
+  wishlistEl.replaceChildren(btn);
+
+  const resync = () => updatePdpWishlistButton(btn, wishlistApi);
+
+  btn.addEventListener('click', async () => {
+    const productData = events.lastPayload('pdp/data');
+    const values = pdpApi.getProductConfigurationValues();
+    const sku = values?.sku || productData?.sku;
+    if (!sku) return;
+
+    if (!checkIsAuthenticated()) {
+      showWishlistLoginToast(() => {
+        showWishlistAuthModal();
+      });
+      return;
+    }
+
+    syncWishlistAuthHeaders(wishlistApi);
+    const existing = wishlistApi.findInPersistedAllWishlistItems(sku);
+    const isRemove = !!existing;
+
+    btn.disabled = true;
+    try {
+      if (isRemove) {
+        await wishlistApi.removeProductsFromWishlist([existing]);
+      } else {
+        await wishlistApi.addProductsToWishlist([{
+          sku,
+          quantity: values?.quantity || 1,
+          optionsUIDs: values?.optionsUIDs,
+        }]);
+      }
+      resync();
+      await showWishlistSuccessToast(isRemove ? 'remove' : 'add', productData?.name || sku);
+    } catch (error) {
+      await showWishlistErrorToast(error instanceof Error ? error.message : undefined);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  events.on('wishlist/data', resync);
+  events.on('pdp/data', resync, { eager: true });
+  events.on('pdp/values', resync, { eager: true });
+  events.on('authenticated', () => {
+    syncWishlistAuthHeaders(wishlistApi);
+    resync();
+  });
+
+  resync();
+  return btn;
 }
 
 export default async function decorate(block) {
@@ -111,29 +356,44 @@ export default async function decorate(block) {
         <div class="product-details__gallery"></div>
       </div>
       <div class="product-details__right-column">
+        <div class="product-details__stock" aria-live="polite"></div>
         <div class="product-details__header"></div>
         <div class="product-details__price"></div>
         <div class="product-details__gallery"></div>
-        <div class="product-details__short-description"></div>
         <div class="product-details__gift-card-options"></div>
         <div class="product-details__configuration">
           <div class="product-details__options"></div>
-          <div class="product-details__quantity"></div>
-          <div class="product-details__buttons">
-            <div class="product-details__buttons__add-to-cart"></div>
-            <div class="product-details__buttons__add-to-wishlist"></div>
+          <div class="product-details__purchase-row">
+            <div class="product-details__quantity"></div>
+            <div class="product-details__buttons">
+              <div class="product-details__buttons__add-to-cart"></div>
+            </div>
           </div>
           <div class="product-details__add-to-cart-status" role="status" aria-live="polite"></div>
         </div>
-        <div class="product-details__description"></div>
-        <div class="product-details__attributes"></div>
+        <div class="product-details__short-description"></div>
+      </div>
+    </div>
+    <div class="product-details__tabs">
+      <div class="product-details__tab-list" role="tablist" aria-label="Product information">
+        <button type="button" role="tab" id="product-details-tab-btn-details"
+          aria-controls="product-details-tab-details" aria-selected="true"
+          class="product-details__tab is-active" data-tab="details">Details</button>
+      </div>
+      <div class="product-details__tab-panels">
+        <div id="product-details-tab-details" role="tabpanel"
+          class="product-details__tab-panel is-active" data-tab="details"
+          aria-labelledby="product-details-tab-btn-details">
+          <div class="product-details__description"></div>
+        </div>
       </div>
     </div>
   `);
 
   const $alert = fragment.querySelector('.product-details__alert');
-  const $gallery = fragment.querySelector('.product-details__gallery');
+  const $gallery = fragment.querySelector('.product-details__left-column .product-details__gallery');
   const $header = fragment.querySelector('.product-details__header');
+  const $stock = fragment.querySelector('.product-details__stock');
   const $price = fragment.querySelector('.product-details__price');
   const $galleryMobile = fragment.querySelector('.product-details__right-column .product-details__gallery');
   const $shortDescription = fragment.querySelector('.product-details__short-description');
@@ -141,15 +401,13 @@ export default async function decorate(block) {
   const $quantity = fragment.querySelector('.product-details__quantity');
   const $giftCardOptions = fragment.querySelector('.product-details__gift-card-options');
   const $addToCart = fragment.querySelector('.product-details__buttons__add-to-cart');
-  const $wishlistToggleBtn = fragment.querySelector('.product-details__buttons__add-to-wishlist');
-  // Kept mounted at all times so the "Adding to Cart" status is reliably
-  // announced instead of relying on the button's text/disabled state
-  // changing, which isn't announced by screen readers on its own.
   const $addToCartStatus = fragment.querySelector('.product-details__add-to-cart-status');
   const $description = fragment.querySelector('.product-details__description');
-  const $attributes = fragment.querySelector('.product-details__attributes');
+  const $wishlistHost = document.createElement('div');
+  $wishlistHost.className = 'product-details__wishlist';
 
   block.replaceChildren(fragment);
+  block.append($wishlistHost);
 
   const gallerySlots = {
     CarouselThumbnail: (ctx) => {
@@ -178,14 +436,11 @@ export default async function decorate(block) {
     _galleryMobile,
     _gallery,
     _header,
-    _price,
     _shortDescription,
     _options,
     _quantity,
     _giftCardOptions,
     _description,
-    _attributes,
-    wishlistToggleBtn,
   ] = await Promise.all([
     // Gallery (Mobile)
     pdpRendered.render(ProductGallery, {
@@ -202,14 +457,14 @@ export default async function decorate(block) {
       slots: gallerySlots,
     })($galleryMobile),
 
-    // Gallery (Desktop)
+    // Gallery (Desktop) — main image with thumbnail row below (TFS reference)
     pdpRendered.render(ProductGallery, {
-      controls: 'thumbnailsColumn',
+      controls: 'thumbnailsRow',
       arrows: true,
-      peak: true,
+      peak: false,
       gap: 'small',
       loop: false,
-      videos: true, // Display videos if available
+      videos: true,
       imageParams: {
         ...IMAGES_SIZES,
       },
@@ -219,9 +474,6 @@ export default async function decorate(block) {
 
     // Header
     pdpRendered.render(ProductHeader, {})($header),
-
-    // Price
-    pdpRendered.render(ProductPrice, {})($price),
 
     // Short Description
     pdpRendered.render(ProductShortDescription, {})($shortDescription),
@@ -247,22 +499,21 @@ export default async function decorate(block) {
 
     // Description
     pdpRendered.render(ProductDescription, {})($description),
-
-    // Attributes
-    pdpRendered.render(ProductAttributes, {
-      formatValue: formatNumericAttributeValue,
-    })($attributes),
-
-    // Wishlist button - WishlistToggle Container
-    wishlistRender.render(WishlistToggle, {
-      product,
-    })($wishlistToggleBtn),
   ]);
+
+  await setupPdpWishlist($wishlistHost);
+  layoutHeaderMeta($header, $wishlistHost);
+  initPdpTabs(block);
+
+  if (product) {
+    updateStockBadge($stock, product.inStock !== false, labels);
+    renderPdpPricing($price, product, labels);
+    updateShortDescriptionVisibility($shortDescription, product);
+  }
 
   // Configuration – Button - Add to Cart
   const addToCart = await UI.render(Button, {
-    children: labels.Global?.AddProductToCart,
-    icon: h(Icon, { source: 'Cart' }),
+    children: labels.Global?.AddProductToCart || 'Add to Cart',
     onClick: async () => {
       const buttonActionText = isUpdateMode
         ? labels.Global?.UpdatingInCart
@@ -351,6 +602,9 @@ export default async function decorate(block) {
   events.on('pdp/data', (data) => {
     ensureProductImages(data);
     isOutOfStock = data?.inStock === false;
+    updateStockBadge($stock, !isOutOfStock, labels);
+    renderPdpPricing($price, data, labels);
+    updateShortDescriptionVisibility($shortDescription, data);
     addToCart.setProps((prev) => ({ ...prev, disabled: isOutOfStock }));
   }, { eager: true });
 
@@ -359,26 +613,7 @@ export default async function decorate(block) {
     addToCart.setProps((prev) => ({ ...prev, disabled: isOutOfStock || !valid }));
   }, { eager: true });
 
-  // Handle option changes
-  events.on('pdp/values', () => {
-    if (wishlistToggleBtn) {
-      const configValues = pdpApi.getProductConfigurationValues();
-
-      // Check URL parameter for empty optionsUIDs
-      const urlOptionsUIDs = urlParams.get('optionsUIDs');
-
-      // If URL has empty optionsUIDs parameter, treat as base product (no options)
-      const optionUIDs = urlOptionsUIDs === '' ? undefined : (configValues?.optionsUIDs || undefined);
-
-      wishlistToggleBtn.setProps((prev) => ({
-        ...prev,
-        product: {
-          ...product,
-          optionUIDs,
-        },
-      }));
-    }
-  }, { eager: true });
+  // Handle option changes — wishlist syncs via pdp/values listener in setupPdpWishlist
 
   events.on('wishlist/alert', ({ action, item }) => {
     wishlistRender.render(WishlistAlert, {
