@@ -10,14 +10,11 @@ import {
 } from '@dropins/tools/components.js';
 
 // Dropin Containers
-import CartSummaryList from '@dropins/storefront-cart/containers/CartSummaryList.js';
+import CartSummaryTable from '@dropins/storefront-cart/containers/CartSummaryTable.js';
 import OrderSummary from '@dropins/storefront-cart/containers/OrderSummary.js';
 import EstimateShipping from '@dropins/storefront-cart/containers/EstimateShipping.js';
 import Coupons from '@dropins/storefront-cart/containers/Coupons.js';
-import GiftCards from '@dropins/storefront-cart/containers/GiftCards.js';
-import GiftOptions from '@dropins/storefront-cart/containers/GiftOptions.js';
 import { render as wishlistRender } from '@dropins/storefront-wishlist/render.js';
-import { WishlistToggle } from '@dropins/storefront-wishlist/containers/WishlistToggle.js';
 import { WishlistAlert } from '@dropins/storefront-wishlist/containers/WishlistAlert.js';
 import { tryRenderAemAssetsImage } from '@dropins/tools/lib/aem/assets.js';
 
@@ -35,73 +32,134 @@ import '../../scripts/initializers/wishlist.js';
 import { readBlockConfig } from '../../scripts/aem.js';
 import { fetchPlaceholders, rootLink, getProductLink } from '../../scripts/commerce.js';
 
+/**
+ * Adds edit controls beside remove for configurable items (TFS cart).
+ * @param {Element} root
+ * @param {Function} onEdit
+ * @param {object} placeholders
+ * @param {boolean} enableUpdatingProduct
+ */
+function decorateCartItemActions(root, onEdit, placeholders, enableUpdatingProduct) {
+  if (!enableUpdatingProduct) return;
+
+  const cart = Cart.getCartDataFromCache();
+
+  root.querySelectorAll('.cart-cart-summary-table__row').forEach((row) => {
+    const actions = row.querySelector('.cart-cart-summary-table__item-actions');
+    if (!actions || actions.querySelector('.cart-item-edit-link')) return;
+
+    const removeBtn = actions.querySelector(
+      '.cart-cart-summary-table__item-remove-button',
+    );
+    if (!removeBtn) return;
+
+    const uid = removeBtn.getAttribute('data-testid')?.replace('cart-table-item-remove-', '');
+    const item = cart?.items?.find((entry) => entry.uid === uid);
+    const isConfigurable = item?.itemType === 'ConfigurableCartItem'
+      || !!row.querySelector('.cart-cart-summary-table__item-configurations');
+    if (!item || !isConfigurable) return;
+
+    const editLink = document.createElement('div');
+    editLink.className = 'cart-item-edit-link';
+
+    UI.render(Button, {
+      children: placeholders?.Global?.CartEditButton || 'Edit',
+      'aria-label': `${placeholders?.Global?.CartEditButton || 'Edit'} ${item.name}`,
+      variant: 'tertiary',
+      size: 'medium',
+      icon: h(Icon, { source: 'Edit' }),
+      onClick: () => onEdit(item),
+    })(editLink);
+
+    actions.insertBefore(editLink, removeBtn);
+  });
+}
+
+/**
+ * loads and decorates the cart block
+ * @param {Element} block The block element
+ */
 export default async function decorate(block) {
-  // Configuration
+  // Configuration — defaults lean toward TFS cart behavior
   const {
     'hide-heading': hideHeading = 'false',
-    'max-items': maxItems,
-    'hide-attributes': hideAttributes = '',
-    'enable-item-quantity-update': enableUpdateItemQuantity = 'false',
+    'enable-item-quantity-update': enableUpdateItemQuantity = 'true',
     'enable-item-remove': enableRemoveItem = 'true',
-    'enable-estimate-shipping': enableEstimateShipping = 'false',
-    'start-shopping-url': startShoppingURL = '',
+    'enable-estimate-shipping': enableEstimateShipping = 'true',
+    'start-shopping-url': startShoppingURL = '/',
     'checkout-url': checkoutURL = '',
-    'enable-updating-product': enableUpdatingProduct = 'false',
+    'enable-updating-product': enableUpdatingProduct = 'true',
     'undo-remove-item': undo = 'false',
   } = readBlockConfig(block);
 
   const placeholders = await fetchPlaceholders();
 
-  const _cart = Cart.getCartDataFromCache();
-
-  // Modal state
   let currentModal = null;
   let currentNotification = null;
 
-  // Layout
   const fragment = document.createRange().createContextualFragment(`
     <div class="cart__notification"></div>
     <div class="cart__wrapper">
       <div class="cart__left-column">
+        <h1 class="cart__title">Shopping Cart</h1>
         <div class="cart__list"></div>
+        <div class="cart__actions">
+          <a class="cart__action cart__action--continue" href="${rootLink(startShoppingURL || '/')}">Continue Shopping</a>
+          <button type="button" class="cart__action cart__action--update">Update Shopping Cart</button>
+        </div>
+        <div class="cart__coupons"></div>
       </div>
       <div class="cart__right-column">
         <div class="cart__order-summary"></div>
-        <div class="cart__gift-options"></div>
       </div>
     </div>
-
     <div class="cart__empty-cart"></div>
   `);
 
   const $wrapper = fragment.querySelector('.cart__wrapper');
   const $notification = fragment.querySelector('.cart__notification');
+  const $title = fragment.querySelector('.cart__title');
   const $list = fragment.querySelector('.cart__list');
+  const $actions = fragment.querySelector('.cart__actions');
+  const $coupons = fragment.querySelector('.cart__coupons');
   const $summary = fragment.querySelector('.cart__order-summary');
   const $emptyCart = fragment.querySelector('.cart__empty-cart');
-  const $giftOptions = fragment.querySelector('.cart__gift-options');
   const $rightColumn = fragment.querySelector('.cart__right-column');
+  const $updateBtn = fragment.querySelector('.cart__action--update');
+
+  if (hideHeading === 'true') {
+    $title.hidden = true;
+  }
 
   block.innerHTML = '';
   block.appendChild(fragment);
 
-  // Wishlist variables
   const routeToWishlist = rootLink('/wishlist');
 
-  // Toggle Empty Cart
-  function toggleEmptyCart(_state) {
-    $wrapper.removeAttribute('hidden');
+  function toggleEmptyCart(isEmpty) {
+    // Empty state is rendered inside CartSummaryTable; keep the list visible.
+    $title.hidden = hideHeading === 'true' || isEmpty;
+    $actions.hidden = isEmpty;
+    $coupons.hidden = isEmpty;
+    $rightColumn.style.display = isEmpty ? 'none' : '';
     $emptyCart.setAttribute('hidden', '');
+    $wrapper.removeAttribute('hidden');
   }
 
-  // Handle Edit Button Click
+  $updateBtn.addEventListener('click', async () => {
+    $updateBtn.disabled = true;
+    try {
+      await Cart.refreshCart();
+    } finally {
+      $updateBtn.disabled = false;
+    }
+  });
+
   async function handleEditButtonClick(cartItem) {
     try {
-      // Create mini PDP content
       const miniPDPContent = await createMiniPDP(
         cartItem,
-        async (_updateData) => {
-          // Show success message when mini-PDP updates item
+        async () => {
           const productName = cartItem.name
             || cartItem.product?.name
             || placeholders?.Global?.CartUpdatedProductName;
@@ -110,7 +168,6 @@ export default async function decorate(block) {
             productName,
           );
 
-          // Clear any existing notifications
           currentNotification?.remove();
 
           currentNotification = await UI.render(InLineAlert, {
@@ -125,7 +182,6 @@ export default async function decorate(block) {
             },
           })($notification);
 
-          // Auto-dismiss after 5 seconds
           setTimeout(() => {
             currentNotification?.remove();
           }, 5000);
@@ -138,7 +194,6 @@ export default async function decorate(block) {
         },
       );
 
-      // Create and show modal
       currentModal = await createModal([miniPDPContent]);
 
       if (currentModal.block) {
@@ -149,10 +204,8 @@ export default async function decorate(block) {
     } catch (error) {
       console.error('Error opening mini PDP modal:', error);
 
-      // Clear any existing notifications
       currentNotification?.remove();
 
-      // Show error notification
       currentNotification = await UI.render(InLineAlert, {
         heading: placeholders?.Global?.ProductLoadError,
         type: 'error',
@@ -167,20 +220,14 @@ export default async function decorate(block) {
     }
   }
 
-  // Render Containers
   const createProductLink = (product) => getProductLink(product.url.urlKey, product.topLevelSku);
+
   await Promise.all([
-    // Cart List
-    provider.render(CartSummaryList, {
-      hideHeading: hideHeading === 'true',
+    provider.render(CartSummaryTable, {
       routeProduct: createProductLink,
       routeEmptyCartCTA: startShoppingURL ? () => rootLink(startShoppingURL) : undefined,
-      maxItems: parseInt(maxItems, 10) || undefined,
-      attributesToHide: hideAttributes
-        .split(',')
-        .map((attr) => attr.trim().toLowerCase()),
-      enableUpdateItemQuantity: enableUpdateItemQuantity === 'true',
-      enableRemoveItem: enableRemoveItem === 'true',
+      allowQuantityUpdates: enableUpdateItemQuantity === 'true',
+      allowRemoveItems: enableRemoveItem === 'true',
       undo: undo === 'true',
       slots: {
         Thumbnail: (ctx) => {
@@ -192,7 +239,6 @@ export default async function decorate(block) {
             alias: item.sku,
             imageProps: defaultImageProps,
             wrapper: anchorWrapper,
-
             params: {
               width: defaultImageProps.width,
               height: defaultImageProps.height,
@@ -200,63 +246,67 @@ export default async function decorate(block) {
           });
         },
 
-        Footer: (ctx) => {
-          // Edit Link
-          if (ctx.item?.itemType === 'ConfigurableCartItem' && enableUpdatingProduct === 'true') {
-            const editLink = document.createElement('div');
-            editLink.className = 'cart-item-edit-link';
+        Sku: (ctx) => {
+          ctx.remove();
+        },
 
-            UI.render(Button, {
-              children: placeholders?.Global?.CartEditButton,
-              // Every cart item renders its own Edit button, so the accessible
-              // name must include the product name to distinguish them.
-              'aria-label': `${placeholders?.Global?.CartEditButton} ${ctx.item.name}`,
-              variant: 'tertiary',
-              size: 'medium',
-              icon: h(Icon, { source: 'Edit' }),
-              onClick: () => handleEditButtonClick(ctx.item),
-            })(editLink);
+        Quantity: (ctx) => {
+          const {
+            item,
+            isUpdating,
+            quantityInputValue,
+            handleInputChange,
+          } = ctx;
 
-            ctx.appendChild(editLink);
-          }
+          const wrap = document.createElement('div');
+          wrap.className = 'cart-qty';
 
-          // Wishlist Button (if product is not configurable)
-          const $wishlistToggle = document.createElement('div');
-          $wishlistToggle.classList.add('cart__action--wishlist-toggle');
+          const dec = document.createElement('button');
+          dec.type = 'button';
+          dec.className = 'cart-qty__btn cart-qty__btn--dec';
+          dec.setAttribute('aria-label', `Decrease quantity for ${item.name}`);
+          dec.textContent = '−';
+          dec.disabled = isUpdating || quantityInputValue <= 1;
 
-          wishlistRender.render(WishlistToggle, {
-            product: ctx.item,
-            size: 'medium',
-            labelToWishlist: placeholders?.Global?.CartMoveToWishlist,
-            labelWishlisted: placeholders?.Global?.CartRemoveFromWishlist,
-            removeProdFromCart: Cart.updateProductsFromCart,
-          })($wishlistToggle);
+          const input = document.createElement('input');
+          input.type = 'number';
+          input.min = '1';
+          input.className = 'cart-qty__input';
+          input.value = String(quantityInputValue);
+          input.setAttribute('aria-label', `Quantity for ${item.name}`);
+          input.disabled = isUpdating;
+          input.addEventListener('change', handleInputChange);
 
-          ctx.appendChild($wishlistToggle);
+          const inc = document.createElement('button');
+          inc.type = 'button';
+          inc.className = 'cart-qty__btn cart-qty__btn--inc';
+          inc.setAttribute('aria-label', `Increase quantity for ${item.name}`);
+          inc.textContent = '+';
+          inc.disabled = isUpdating;
 
-          // Gift Options
-          const giftOptions = document.createElement('div');
+          const emit = (next) => {
+            const fakeEvent = {
+              target: { value: String(next) },
+              currentTarget: { value: String(next) },
+            };
+            handleInputChange(fakeEvent);
+          };
 
-          provider.render(GiftOptions, {
-            item: ctx.item,
-            view: 'product',
-            dataSource: 'cart',
-            handleItemsLoading: ctx.handleItemsLoading,
-            handleItemsError: ctx.handleItemsError,
-            onItemUpdate: ctx.onItemUpdate,
-            slots: {
-              SwatchImage: swatchImageSlot,
-            },
-          })(giftOptions);
+          dec.addEventListener('click', () => {
+            if (quantityInputValue > 1) emit(quantityInputValue - 1);
+          });
+          inc.addEventListener('click', () => emit(quantityInputValue + 1));
 
-          ctx.appendChild(giftOptions);
+          wrap.append(dec, input, inc);
+          ctx.replaceWith(wrap);
         },
       },
     })($list),
 
-    // Order Summary
     provider.render(OrderSummary, {
       routeCheckout: checkoutURL ? () => rootLink(checkoutURL) : undefined,
+      enableCoupons: false,
+      enableGiftCards: false,
       slots: {
         EstimateShipping: async (ctx) => {
           if (enableEstimateShipping === 'true') {
@@ -265,43 +315,96 @@ export default async function decorate(block) {
             ctx.replaceWith(wrapper);
           }
         },
-        Coupons: (ctx) => {
-          const coupons = document.createElement('div');
-
-          provider.render(Coupons)(coupons);
-
-          ctx.appendChild(coupons);
-        },
-        GiftCards: (ctx) => {
-          const giftCards = document.createElement('div');
-
-          provider.render(GiftCards)(giftCards);
-
-          ctx.appendChild(giftCards);
-        },
       },
     })($summary),
 
-    provider.render(GiftOptions, {
-      view: 'order',
-      dataSource: 'cart',
-
-      slots: {
-        SwatchImage: swatchImageSlot,
-      },
-    })($giftOptions),
+    provider.render(Coupons)($coupons),
   ]);
 
+  /**
+   * Wraps estimate-shipping UI in a TFS-style accordion.
+   */
+  function decorateShippingAccordion() {
+    const content = $summary.querySelector('.cart-order-summary__content');
+    const shipping = $summary.querySelector('.cart-order-summary__shipping');
+    if (!content || !shipping) return;
+
+    let details = shipping.closest('.cart-shipping-accordion');
+    if (!details) {
+      details = document.createElement('details');
+      details.className = 'cart-shipping-accordion';
+      details.open = false;
+
+      const summaryEl = document.createElement('summary');
+      summaryEl.className = 'cart-shipping-accordion__summary';
+      summaryEl.textContent = 'Estimate Shipping And Tax';
+
+      shipping.parentNode.insertBefore(details, shipping);
+      details.append(summaryEl, shipping);
+    }
+
+    // TFS: estimate shipping sits above subtotal / totals
+    if (content.firstElementChild !== details) {
+      content.prepend(details);
+    }
+  }
+
+  /**
+   * Ensures Order Total Excl. Tax appears when the drop-in only shows incl.
+   * @param {object|null} cartData
+   */
+  function decorateExclTaxTotal(cartData) {
+    const content = $summary.querySelector('.cart-order-summary__content');
+    if (!content) return;
+
+    let excl = content.querySelector('.cart-order-summary__total-excl');
+    const totalRow = content.querySelector('.cart-order-summary__total');
+    if (!totalRow) return;
+
+    const exclPrice = cartData?.total?.excludingTax;
+    if (exclPrice?.value == null) return;
+
+    const formatted = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: exclPrice.currency || 'USD',
+    }).format(exclPrice.value);
+
+    if (!excl) {
+      excl = document.createElement('div');
+      excl.className = 'cart-order-summary__entry cart-order-summary__total cart-order-summary__total-excl';
+      totalRow.after(excl);
+    }
+    excl.innerHTML = `<span>Order Total Excl. Tax</span><span class="cart-order-summary__price">${formatted}</span>`;
+  }
+
+  $emptyCart.setAttribute('hidden', '');
+
+  const syncItemActions = () => {
+    window.requestAnimationFrame(() => {
+      decorateCartItemActions(
+        $list,
+        handleEditButtonClick,
+        placeholders,
+        enableUpdatingProduct === 'true',
+      );
+      decorateShippingAccordion();
+
+      // Expand discount accordion by default (TFS shows code field open)
+      const couponToggle = $coupons.querySelector(
+        '.dropin-accordion-section__flex[aria-label*="Open"]',
+      );
+      couponToggle?.click();
+    });
+  };
+
   let cartViewEventPublished = false;
-  // Events
   events.on(
     'cart/data',
     (cartData) => {
-      toggleEmptyCart(isCartEmpty(cartData));
-
       const isEmpty = !cartData || cartData.totalQuantity < 1;
-      $giftOptions.style.display = isEmpty ? 'none' : '';
-      $rightColumn.style.display = isEmpty ? 'none' : '';
+      toggleEmptyCart(isEmpty);
+      syncItemActions();
+      window.requestAnimationFrame(() => decorateExclTaxTotal(cartData));
 
       if (!cartViewEventPublished) {
         cartViewEventPublished = true;
@@ -324,22 +427,4 @@ export default async function decorate(block) {
   });
 
   return Promise.resolve();
-}
-
-function isCartEmpty(cart) {
-  return cart ? cart.totalQuantity < 1 : true;
-}
-
-function swatchImageSlot(ctx) {
-  const { imageSwatchContext, defaultImageProps } = ctx;
-  tryRenderAemAssetsImage(ctx, {
-    alias: imageSwatchContext.label,
-    imageProps: defaultImageProps,
-    wrapper: document.createElement('span'),
-
-    params: {
-      width: defaultImageProps.width,
-      height: defaultImageProps.height,
-    },
-  });
 }
