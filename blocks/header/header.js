@@ -21,10 +21,6 @@ const isDesktop = window.matchMedia('(min-width: 900px)');
 
 const labels = await fetchPlaceholders();
 
-const overlay = document.createElement('div');
-overlay.classList.add('overlay');
-document.querySelector('header').insertAdjacentElement('afterbegin', overlay);
-
 /**
  * Loads the nav fragment. Dual-fetch: local working copy first (aem up serves
  * /content/nav.plain.html), then the DA/EDS nav doc referenced in metadata.
@@ -100,6 +96,12 @@ export default async function decorate(block) {
   nav.id = 'nav';
   while (fragment && fragment.firstElementChild) nav.append(fragment.firstElementChild);
 
+  // Keep overlay inside the header block so it shares the nav stacking context
+  // (avoids z-index fights with sticky .nav-wrapper / page chrome).
+  const overlay = document.createElement('div');
+  overlay.classList.add('overlay');
+  overlay.setAttribute('aria-hidden', 'true');
+
   // Fragment sections in order: 0 = logo, 1 = utility bar (2 lists), 2 = menu marker
   const [brandSection, utilitySection] = nav.children;
 
@@ -151,7 +153,7 @@ export default async function decorate(block) {
     </a>
   `);
 
-  /* ---------- Tools (wishlist / cart / account) — shown in utility bar ---------- */
+  /* ---------- Tools (account / wishlist / cart) — shown in utility bar ---------- */
   const navTools = document.createElement('div');
   navTools.className = 'nav-tools';
   utilityRight.append(navTools);
@@ -278,6 +280,18 @@ export default async function decorate(block) {
     });
   }
 
+  function syncMiniCartChrome(show) {
+    cartButton.setAttribute('aria-expanded', show ? 'true' : 'false');
+    document.body.classList.toggle('minicart-open', show);
+
+    // Keep mobile nav overlay behavior intact when the drawer menu is open.
+    const menuOpen = document.querySelector('.nav-wrapper')?.classList.contains('active');
+    if (!menuOpen) {
+      overlay.classList.toggle('show', show);
+      document.body.style.overflowY = show ? 'hidden' : '';
+    }
+  }
+
   async function toggleMiniCart(state) {
     if (state) {
       await loadMiniCartFragment();
@@ -286,13 +300,12 @@ export default async function decorate(block) {
     }
 
     togglePanel(minicartPanel, state);
-    cartButton.setAttribute(
-      'aria-expanded',
-      minicartPanel.classList.contains('nav-tools-panel--show') ? 'true' : 'false',
-    );
+    const show = minicartPanel.classList.contains('nav-tools-panel--show');
+    syncMiniCartChrome(show);
   }
 
   cartButton.addEventListener('click', () => toggleMiniCart(!minicartPanel.classList.contains('nav-tools-panel--show')));
+  document.addEventListener('minicart:close', () => toggleMiniCart(false));
 
   // Cart Item Counter
   let previousCartQuantity;
@@ -470,7 +483,7 @@ export default async function decorate(block) {
 
   const navWrapper = document.createElement('div');
   navWrapper.className = 'nav-wrapper';
-  navWrapper.append(nav);
+  navWrapper.append(overlay, nav);
   block.append(navWrapper);
 
   // hamburger for mobile
@@ -484,8 +497,12 @@ export default async function decorate(block) {
   function setMenu(open) {
     nav.setAttribute('aria-expanded', open ? 'true' : 'false');
     navWrapper.classList.toggle('active', open);
-    overlay.classList.toggle('show', open);
-    document.body.style.overflowY = open && !isDesktop.matches ? 'hidden' : '';
+    if (open) {
+      toggleMiniCart(false);
+    }
+    const miniOpen = minicartPanel.classList.contains('nav-tools-panel--show');
+    overlay.classList.toggle('show', open || miniOpen);
+    document.body.style.overflowY = (open && !isDesktop.matches) || miniOpen ? 'hidden' : '';
     hamburger.querySelector('button').setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
   }
 
@@ -504,9 +521,12 @@ export default async function decorate(block) {
   drawerClose.addEventListener('click', () => setMenu(false));
   navSections.prepend(drawerClose);
 
-  overlay.addEventListener('click', () => setMenu(false));
+  overlay.addEventListener('click', () => {
+    setMenu(false);
+    toggleMiniCart(false);
+  });
 
-  // Place the tool icons (wishlist/cart/account) in the utility bar on
+  // Place the tool icons (account/wishlist/cart) in the utility bar on
   // desktop and in the main bar (right of logo) on mobile — matching the
   // source, where mobile shows the icons on the white main bar.
   function placeTools() {

@@ -13,6 +13,17 @@ await initializeDropin(async () => {
   const langDefinitions = {
     default: {
       ...labels,
+      Cart: {
+        ...(labels?.Cart || {}),
+        MiniCart: {
+          ...(labels?.Cart?.MiniCart || {}),
+          heading: '{count} Item in Cart',
+          subtotal: 'Cart Subtotal :',
+          subtotalExcludingTaxes: 'Cart Subtotal :',
+          cartLink: 'View Cart',
+          checkoutLink: 'Proceed to Checkout',
+        },
+      },
     },
   };
 

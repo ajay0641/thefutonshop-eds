@@ -4,6 +4,7 @@ import { render as authRenderer } from '@dropins/storefront-auth/render.js';
 import { SignIn } from '@dropins/storefront-auth/containers/SignIn.js';
 import {
   CUSTOMER_FORGOTPASSWORD_PATH,
+  CUSTOMER_CREATE_ACCOUNT_PATH,
   rootLink,
 } from '../../scripts/commerce.js';
 
@@ -30,6 +31,8 @@ function renderSignIn(element) {
     },
     formSize: 'small',
     routeForgotPassword: () => rootLink(CUSTOMER_FORGOTPASSWORD_PATH),
+    renderSignUpLink: true,
+    routeSignUp: () => rootLink(CUSTOMER_CREATE_ACCOUNT_PATH),
   })(element);
 }
 
@@ -46,7 +49,7 @@ export function renderAuthDropdown(navTools) {
     </div>
  </div>`);
 
-  navTools.append(dropdownElement);
+  navTools.prepend(dropdownElement);
 
   const authDropDownPanel = navTools.querySelector('.nav-auth-menu-panel');
   const authDropDownMenuList = navTools.querySelector(
