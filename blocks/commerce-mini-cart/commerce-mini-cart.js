@@ -19,12 +19,100 @@ import '../../scripts/initializers/cart.js';
 import { readBlockConfig } from '../../scripts/aem.js';
 import { fetchPlaceholders, rootLink, getProductLink } from '../../scripts/commerce.js';
 
+/**
+ * Wraps option rows in a "See Details" accordion (TFS reference).
+ * @param {Element} root
+ */
+function decorateSeeDetails(root) {
+  root.querySelectorAll('.dropin-cart-item__configurations').forEach((list) => {
+    if (list.closest('.commerce-mini-cart__details')) return;
+
+    const details = document.createElement('details');
+    details.className = 'commerce-mini-cart__details';
+    details.open = true;
+
+    const summary = document.createElement('summary');
+    summary.className = 'commerce-mini-cart__details-summary';
+    summary.textContent = 'See Details';
+
+    list.parentNode.insertBefore(details, list);
+    details.append(summary, list);
+  });
+}
+
+/**
+ * Places qty, edit, and remove in one action row (TFS reference).
+ * @param {Element} root
+ */
+function decorateItemActions(root) {
+  root.querySelectorAll('.dropin-cart-item').forEach((item) => {
+    const qty = item.querySelector('.dropin-cart-item__quantity');
+    if (!qty || qty.querySelector('.commerce-mini-cart__item-actions')) return;
+
+    const actions = document.createElement('div');
+    actions.className = 'commerce-mini-cart__item-actions';
+
+    const edit = item.querySelector('.cart-item-edit-link');
+    const remove = item.querySelector('.dropin-cart-item__remove')
+      || item.querySelector('[class*="dropin-cart-item__remove"]')
+      || item.querySelector('button.dropin-iconButton');
+
+    if (edit) actions.append(edit);
+    if (remove) actions.append(remove);
+
+    qty.append(actions);
+  });
+}
+
+/**
+ * Builds the TFS-style drawer header: count + View Cart + close.
+ * @param {string} cartURL
+ * @returns {HTMLElement}
+ */
+function createMiniCartHeader(cartURL) {
+  const header = document.createElement('div');
+  header.className = 'commerce-mini-cart__header';
+
+  const title = document.createElement('p');
+  title.className = 'commerce-mini-cart__title';
+
+  const actions = document.createElement('div');
+  actions.className = 'commerce-mini-cart__header-actions';
+
+  const viewCart = document.createElement('a');
+  viewCart.className = 'commerce-mini-cart__view-cart';
+  viewCart.href = cartURL ? rootLink(cartURL) : rootLink('/cart');
+  viewCart.textContent = 'View Cart';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'commerce-mini-cart__close';
+  closeBtn.setAttribute('aria-label', 'Close cart');
+  closeBtn.addEventListener('click', () => {
+    document.dispatchEvent(new CustomEvent('minicart:close'));
+  });
+
+  actions.append(viewCart, closeBtn);
+  header.append(title, actions);
+
+  const updateTitle = (cart) => {
+    const qty = cart?.totalQuantity ?? 0;
+    const label = qty === 1 ? 'Item' : 'Items';
+    title.textContent = `${qty} ${label} in Cart`;
+  };
+
+  events.on('cart/data', updateTitle, { eager: true });
+  updateTitle(events.lastPayload('cart/data'));
+
+  return header;
+}
+
 export default async function decorate(block) {
   const {
     'start-shopping-url': startShoppingURL = '',
     'cart-url': cartURL = '',
     'checkout-url': checkoutURL = '',
-    'enable-updating-product': enableUpdatingProduct = 'false',
+    'enable-updating-product': enableUpdatingProduct = 'true',
     'undo-remove-item': undo = 'false',
   } = readBlockConfig(block);
 
@@ -167,8 +255,15 @@ export default async function decorate(block) {
     routeCheckout: checkoutURL ? () => rootLink(checkoutURL) : undefined,
     routeProduct: createProductLink,
     undo: undo === 'true',
+    hideHeading: true,
+    enableItemRemoval: true,
+    enableQuantityUpdate: true,
 
     slots: {
+      ItemSku: (ctx) => {
+        ctx.remove();
+      },
+
       Thumbnail: (ctx) => {
         const { item, defaultImageProps } = ctx;
         const anchorWrapper = document.createElement('a');
@@ -184,31 +279,32 @@ export default async function decorate(block) {
             height: defaultImageProps.height,
           },
         });
+      },
 
-        if (item?.itemType === 'ConfigurableCartItem' && enableUpdatingProduct === 'true') {
-          const editLinkContainer = document.createElement('div');
-          editLinkContainer.className = 'cart-item-edit-container';
-
-          const editLink = document.createElement('div');
-          editLink.className = 'cart-item-edit-link';
-
-          UI.render(Button, {
-            children: placeholders?.Global?.CartEditButton,
-            // Every cart item renders its own Edit button, so the accessible
-            // name must include the product name to distinguish them.
-            'aria-label': `${placeholders?.Global?.CartEditButton} ${item.name}`,
-            variant: 'tertiary',
-            size: 'medium',
-            icon: h(Icon, { source: 'Edit' }),
-            onClick: () => handleEditButtonClick(item),
-          })(editLink);
-
-          editLinkContainer.appendChild(editLink);
-          ctx.appendChild(editLinkContainer);
+      ItemRemoveAction: (ctx) => {
+        const { item } = ctx;
+        if (item?.itemType !== 'ConfigurableCartItem' || enableUpdatingProduct !== 'true') {
+          return;
         }
+
+        const editLink = document.createElement('div');
+        editLink.className = 'cart-item-edit-link';
+
+        UI.render(Button, {
+          children: placeholders?.Global?.CartEditButton || 'Edit',
+          'aria-label': `${placeholders?.Global?.CartEditButton || 'Edit'} ${item.name}`,
+          variant: 'tertiary',
+          size: 'medium',
+          icon: h(Icon, { source: 'Edit' }),
+          onClick: () => handleEditButtonClick(item),
+        })(editLink);
+
+        ctx.prependSibling(editLink);
       },
     },
   })(block);
+
+  block.prepend(createMiniCartHeader(cartURL));
 
   // Find the products container and add the message div at the top
   const productsContainer = block.querySelector('.cart-mini-cart__products');
@@ -218,6 +314,16 @@ export default async function decorate(block) {
     console.info('Products container not found, appending message to block');
     block.appendChild(shadowWrapper);
   }
+
+  const decorateItems = () => {
+    decorateSeeDetails(block);
+    decorateItemActions(block);
+  };
+
+  decorateItems();
+  events.on('cart/data', () => {
+    window.requestAnimationFrame(decorateItems);
+  });
 
   return block;
 }

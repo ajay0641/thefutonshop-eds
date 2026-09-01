@@ -1,0 +1,11 @@
+{
+  "Cart": {
+    "MiniCart": {
+      "heading": "{count} Item in Cart",
+      "subtotal": "Cart Subtotal :",
+      "subtotalExcludingTaxes": "Cart Subtotal :",
+      "cartLink": "View Cart",
+      "checkoutLink": "Proceed to Checkout"
+    }
+  }
+}
