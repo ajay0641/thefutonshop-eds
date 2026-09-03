@@ -118,14 +118,16 @@ function buildWidgetAutoBlocks(main) {
 }
 
 /**
- * Injects a breadcrumb block above PLP/PDP content when enabled via page metadata.
+ * Injects a breadcrumb block above PLP/PDP/cart content when enabled via page metadata.
  * @param {Element} main
  */
 function buildBreadcrumbBlock(main) {
   if (main.querySelector('.breadcrumb')) return;
 
-  const productBlock = main.querySelector('.product-list-page, .product-details');
-  if (!productBlock) return;
+  const targetBlock = main.querySelector(
+    '.product-list-page, .product-details, .commerce-cart',
+  );
+  if (!targetBlock) return;
 
   const sectionDiv = document.createElement('div');
   const breadcrumb = document.createElement('div');

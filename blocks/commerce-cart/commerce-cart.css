@@ -12,11 +12,15 @@
   --tfs-cart-font: optima, adobe-clean, roboto, roboto-fallback, system-ui, sans-serif;
   --tfs-cart-serif: adobe-garamond-pro, garamond, "Times New Roman", serif;
 
-  padding: 32px 0 64px;
+  padding: 0 0 64px;
   position: relative;
   color: var(--tfs-cart-text);
   font-family: var(--tfs-cart-font);
   background: #fff;
+}
+
+.section.commerce-cart-container {
+  margin-top: 0;
 }
 
 .cart__notification {
@@ -880,7 +884,7 @@
   .commerce-cart .cart__coupons .dropin-accordion-section {
     padding: 16px;
   }
-  
+
   .commerce-cart .cart__coupons .coupon-code-form__action {
     flex-direction: column;
     flex-wrap: nowrap;
