@@ -1,10 +1,10 @@
 .section.product-list-page-container {
     margin-top: 0;
 }
+
 .block.product-list-page .search__wrapper {
     display: grid;
     grid-template-areas:
-        "category-title"
         "result-info"
         "view-facets"
         "facets"
@@ -13,22 +13,213 @@
         "pagination";
 }
 
-.block.product-list-page .search__category-title {
-    grid-area: category-title;
+/* Category title + banner sit before .product-list-page-wrapper for full-bleed image */
+.section.product-list-page-container > .category-hero {
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    padding: 0;
 }
 
-.block.product-list-page .search__category-title:empty {
+.section.product-list-page-container > .category-hero .search__category-title {
+    max-width: 1630px;
+    margin: 0 auto;
+    padding: 0 15px var(--spacing-xsmall);
+}
+
+.section.product-list-page-container > .category-hero .search__category-title:empty {
     display: none;
 }
 
-.block.product-list-page .search__category-title h1 {
+.section.product-list-page-container > .category-hero .search__category-title h1 {
     color: var(--color-neutral-900);
     font-family: var(--type-base-font-family);
     font-size: 34px;
     font-weight: 400;
     line-height: 1.15;
     letter-spacing: 0;
-    margin: 0 0 var(--spacing-xsmall);
+    margin: 0;
+}
+
+.section.product-list-page-container > .category-hero .search__category-image {
+    margin: 0 0 var(--spacing-medium);
+}
+
+.section.product-list-page-container > .category-hero .search__category-image:empty {
+    display: none;
+}
+
+.section.product-list-page-container > .category-hero .search__category-image picture,
+.section.product-list-page-container > .category-hero .search__category-image img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.section.product-list-page-container > .category-description {
+    /* stylelint-disable-next-line value-keyword-case -- brand serif stack matches TFS */
+    --cat-desc-serif: Georgia, "Times New Roman", Times, serif;
+    --cat-desc-border: #eaeae3;
+    --cat-desc-link: #63573e;
+    margin-top: var(--spacing-xbig);
+    color: var(--color-neutral-800);
+    font-family: var(--type-base-font-family);
+    font-size: 16px;
+    font-weight: 300;
+    line-height: 1.6;
+}
+
+.section.product-list-page-container > .category-description:empty {
+    display: none;
+}
+
+.section.product-list-page-container > .category-description h2,
+.section.product-list-page-container > .category-description h3 {
+    color: var(--color-neutral-900);
+    font-family: var(--cat-desc-serif);
+    font-size: 28px;
+    font-weight: 400;
+    line-height: 1.25;
+    margin: 1.5em 0 0.6em;
+}
+
+.section.product-list-page-container > .category-description h2:first-child,
+.section.product-list-page-container > .category-description h3:first-child {
+    margin-top: 0;
+}
+
+.section.product-list-page-container > .category-description p {
+    margin: 0 0 var(--spacing-small);
+}
+
+.section.product-list-page-container > .category-description p:last-child {
+    margin-bottom: 0;
+}
+
+.section.product-list-page-container > .category-description strong {
+    font-weight: 700;
+}
+
+.section.product-list-page-container > .category-description > ul {
+    margin: 0 0 var(--spacing-medium);
+    padding-left: 1.25em;
+}
+
+.section.product-list-page-container > .category-description > ul li {
+    margin-bottom: 0.6em;
+}
+
+.section.product-list-page-container > .category-description table {
+    border-collapse: collapse;
+    margin: 0 0 var(--spacing-medium);
+    width: 100%;
+}
+
+.section.product-list-page-container > .category-description table td,
+.section.product-list-page-container > .category-description table th {
+    border: 1px solid var(--cat-desc-border);
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.section.product-list-page-container > .category-description a {
+    color: var(--cat-desc-link);
+    font-weight: 700;
+    text-decoration: underline;
+}
+
+/* Magento CMS image + text rows (.sub-cat-cms) — match thefutonshop.com */
+.section.product-list-page-container > .category-description .sub-cat-cms {
+    margin-top: var(--spacing-xbig);
+}
+
+.section.product-list-page-container > .category-description .sub-cat-cms a {
+    color: var(--cat-desc-link);
+    font-weight: 700;
+    text-decoration: underline;
+}
+
+.section.product-list-page-container > .category-description .sub-cat-bottom ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.section.product-list-page-container > .category-description .sub-cat-bottom ul li {
+    align-items: center;
+    border-bottom: 1px solid var(--cat-desc-border);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-small);
+    margin: 0 0 20px;
+    padding: 0 0 20px;
+}
+
+.section.product-list-page-container > .category-description .sub-cat-bottom ul li:last-child {
+    border-bottom: 0;
+    margin-bottom: 0;
+}
+
+.section.product-list-page-container > .category-description .sub-cat-bottom .sub-cat-img {
+    padding: 0;
+    width: 100%;
+}
+
+.section.product-list-page-container > .category-description .sub-cat-bottom .sub-cat-img picture,
+.section.product-list-page-container > .category-description .sub-cat-bottom .sub-cat-img img {
+    display: block;
+    height: auto;
+    width: 100%;
+}
+
+.section.product-list-page-container > .category-description .sub-cat-bottom .sub-cat-article {
+    padding: 0;
+    width: 100%;
+}
+
+.section.product-list-page-container > .category-description .sub-cat-bottom .sub-cat-article h3,
+.section.product-list-page-container > .category-description .sub-cat-bottom .sub-cat-article h4 {
+    color: var(--color-neutral-900);
+    font-family: var(--cat-desc-serif);
+    font-size: 20px;
+    font-style: italic;
+    font-weight: 400;
+    line-height: 1.3;
+    margin: 0 0 12px;
+}
+
+.section.product-list-page-container > .category-description .sub-cat-bottom .sub-cat-article p {
+    font-weight: 300;
+    margin: 0 0 0.75em;
+}
+
+.section.product-list-page-container > .category-description .sub-cat-bottom .sub-cat-article p:last-child {
+    margin-bottom: 0;
+}
+
+@media only screen and (min-width: 768px) {
+    .section.product-list-page-container > .category-description .sub-cat-bottom ul li {
+        flex-direction: row;
+        gap: 0;
+    }
+
+    .section.product-list-page-container > .category-description .sub-cat-bottom .sub-cat-img {
+        flex: 0 0 33%;
+        padding: 0 15px;
+        width: 33%;
+    }
+
+    .section.product-list-page-container > .category-description .sub-cat-bottom .sub-cat-article {
+        flex: 1 1 66%;
+        padding: 0 15px;
+        width: 66%;
+    }
+
+    .section.product-list-page-container > .category-description .sub-cat-bottom .sub-cat-article h3,
+    .section.product-list-page-container > .category-description .sub-cat-bottom .sub-cat-article h4 {
+        font-size: 24px;
+    }
 }
 
 @media only screen and (min-width: 1200px) {
@@ -39,7 +230,7 @@
 }
 
 @media only screen and (min-width: 900px) {
-    .block.product-list-page .search__category-title h1 {
+    .section.product-list-page-container > .category-hero .search__category-title h1 {
         font-size: 46px;
     }
 }
@@ -455,6 +646,7 @@
 .block.product-list-page.list-view .product-discovery-product-list__grid {
     grid-template-columns: 1fr !important;
 }
+
 .block.product-list-page.list-view .dropin-product-item-card__content {
     padding-left: 20px;
 }
@@ -482,7 +674,6 @@
 
 .block.product-list-page.product-list-page--empty .search__wrapper {
     grid-template-areas:
-        "category-title"
         "product-list";
     grid-template-columns: 1fr;
 }
@@ -520,7 +711,6 @@
 @media only screen and (min-width: 768px) {
     .block.product-list-page .search__wrapper {
         grid-template-areas:
-            "category-title category-title"
             "result-info product-sort"
             "facets product-list"
             ". pagination";

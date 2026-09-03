@@ -71,27 +71,40 @@ function createFaqItem(faq) {
 }
 
 /**
+ * Keeps only one FAQ item open at a time (accordion).
+ * @param {HTMLElement} list
+ */
+function enableExclusiveAccordion(list) {
+  list.addEventListener('toggle', (event) => {
+    const { target } = event;
+    if (!(target instanceof HTMLDetailsElement) || !target.open) return;
+    list.querySelectorAll('details.faq-item[open]').forEach((item) => {
+      if (item !== target) item.open = false;
+    });
+  }, true);
+}
+
+/**
  * loads and decorates the FAQ block
  * @param {Element} block The block element
  */
 export default async function decorate(block) {
   const config = readBlockConfig(block);
-  const heading = config.heading || '';
+  const heading = config.heading || 'Frequently Asked Questions';
 
   block.textContent = '';
   block.classList.add('loading');
 
-  if (heading) {
-    const title = document.createElement('h2');
-    title.className = 'faq-heading';
-    title.textContent = heading;
-    block.append(title);
-  }
+  const title = document.createElement('h2');
+  title.className = 'faq-heading';
+  title.textContent = heading;
+  block.append(title);
 
   const list = document.createElement('div');
   list.className = 'faq-list';
   list.setAttribute('role', 'list');
   block.append(list);
+  enableExclusiveAccordion(list);
 
   try {
     const endpoint = resolveEndpoint(config);

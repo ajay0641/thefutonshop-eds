@@ -43,6 +43,7 @@ import {
   createTfsProductCardHandlers,
   requiresTfsPdpConfiguration,
 } from '../../scripts/tfs-product-card-handlers.js';
+import { fetchCategoryDetails } from './category-details.js';
 
 // Initializers
 import '../../scripts/initializers/search.js';
@@ -133,7 +134,6 @@ export default async function decorate(block) {
 
   const fragment = document.createRange().createContextualFragment(`
     <div class="search__wrapper">
-      <div class="search__category-title"></div>
       <div class="search__result-info"></div>
       <div class="search__view-facets"></div>
       <div class="search__facets"></div>
@@ -143,7 +143,6 @@ export default async function decorate(block) {
     </div>
   `);
 
-  const $categoryTitle = fragment.querySelector('.search__category-title');
   const $resultInfo = fragment.querySelector('.search__result-info');
   const $viewFacets = fragment.querySelector('.search__view-facets');
   const $facets = fragment.querySelector('.search__facets');
@@ -154,18 +153,95 @@ export default async function decorate(block) {
   block.innerHTML = '';
   block.appendChild(fragment);
 
+  // Title + banner live before .product-list-page-wrapper so the image can go full-bleed.
+  const plpWrapper = block.parentElement;
+  let $categoryHero = plpWrapper?.previousElementSibling;
+  if (!$categoryHero?.classList.contains('category-hero')) {
+    $categoryHero = document.createElement('div');
+    $categoryHero.className = 'category-hero';
+    $categoryHero.innerHTML = `
+      <div class="search__category-title"></div>
+      <div class="search__category-image"></div>
+    `;
+    plpWrapper?.before($categoryHero);
+  }
+
+  const $categoryTitle = $categoryHero.querySelector('.search__category-title');
+  const $categoryImage = $categoryHero.querySelector('.search__category-image');
+
   const renderCategoryHeading = (name) => {
-    if (!name || $categoryTitle.querySelector('h1')) return;
-    const heading = document.createElement('h1');
+    if (!name || !$categoryTitle) return;
+    let heading = $categoryTitle.querySelector('h1');
+    if (!heading) {
+      heading = document.createElement('h1');
+      $categoryTitle.append(heading);
+    }
     heading.textContent = name;
-    $categoryTitle.append(heading);
+  };
+
+  /**
+   * Renders category banner image under the H1 (full-bleed outside PLP wrapper).
+   * @param {{ url: string, label: string }|null} image
+   */
+  const renderCategoryImage = (image) => {
+    if (!$categoryImage) return;
+    $categoryImage.innerHTML = '';
+    if (!image?.url) return;
+
+    const picture = document.createElement('picture');
+    const img = document.createElement('img');
+    img.src = image.url;
+    img.alt = image.label || '';
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    picture.append(img);
+    $categoryImage.append(picture);
+  };
+
+  /**
+   * Renders Magento category description below the PLP wrapper.
+   * @param {string|null} descriptionHtml
+   */
+  const renderCategoryDescription = (descriptionHtml) => {
+    if (!plpWrapper) return;
+
+    let $description = plpWrapper.parentElement
+      ?.querySelector(':scope > .category-description');
+    if (!$description) {
+      $description = document.createElement('div');
+      $description.className = 'category-description';
+      plpWrapper.after($description);
+    }
+
+    const html = (descriptionHtml || '').trim();
+    if (!html) {
+      $description.remove();
+      return;
+    }
+
+    $description.innerHTML = html;
   };
 
   if (config.urlpath) {
+    // Prefer Catalog Service categoryTree for name/image/description (non-blocking).
     window.setTimeout(() => {
-      getCategoryAncestors(config.urlpath)
-        .then((ancestors) => renderCategoryHeading(ancestors.at(-1)?.name || null))
-        .catch(() => {});
+      fetchCategoryDetails(config.urlpath)
+        .then((details) => {
+          if (!details) {
+            getCategoryAncestors(config.urlpath)
+              .then((ancestors) => renderCategoryHeading(ancestors.at(-1)?.name || null))
+              .catch(() => {});
+            return;
+          }
+          renderCategoryHeading(details.name);
+          renderCategoryImage(details.image);
+          renderCategoryDescription(details.description);
+        })
+        .catch(() => {
+          getCategoryAncestors(config.urlpath)
+            .then((ancestors) => renderCategoryHeading(ancestors.at(-1)?.name || null))
+            .catch(() => {});
+        });
     }, 0);
   }
 
