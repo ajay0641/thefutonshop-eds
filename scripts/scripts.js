@@ -118,7 +118,8 @@ function buildWidgetAutoBlocks(main) {
 }
 
 /**
- * Injects a breadcrumb block above PLP/PDP/cart content when enabled via page metadata.
+ * Injects a breadcrumb block into the existing PLP/PDP/cart section.
+ * Appended after the main block so eager loadSection fetches products first.
  * @param {Element} main
  */
 function buildBreadcrumbBlock(main) {
@@ -129,11 +130,37 @@ function buildBreadcrumbBlock(main) {
   );
   if (!targetBlock) return;
 
-  const sectionDiv = document.createElement('div');
+  const section = targetBlock.parentElement;
+  if (!section) return;
+
+  // Append the block element itself (not an extra wrap). decorateSections adds
+  // the wrapper; decorateBlocks expects section > wrapper > .breadcrumb.
   const breadcrumb = document.createElement('div');
   breadcrumb.className = 'breadcrumb';
-  sectionDiv.append(breadcrumb);
-  main.prepend(sectionDiv);
+  section.append(breadcrumb);
+}
+
+/**
+ * Moves below-the-fold blocks out of the first PLP section so it can paint
+ * without waiting for recommendations, enrichment, or FAQ GraphQL.
+ * @param {Element} main
+ */
+function deferNonCriticalPlpBlocks(main) {
+  const section = main.querySelector('.section.product-list-page-container');
+  if (!section) return;
+
+  const deferredWraps = [...section.querySelectorAll(
+    '.enrichment, .product-recommendations, .faq',
+  )].map((block) => block.parentElement).filter(Boolean);
+
+  if (!deferredWraps.length) return;
+
+  const next = document.createElement('div');
+  next.className = 'section';
+  next.dataset.sectionStatus = 'initialized';
+  next.style.display = 'none';
+  deferredWraps.forEach((wrap) => next.append(wrap));
+  section.after(next);
 }
 
 /**
@@ -216,6 +243,7 @@ export function decorateMain(main) {
   decorateSections(main);
   decorateBlocks(main);
   decorateButtons(main);
+  deferNonCriticalPlpBlocks(main);
 }
 
 /**
@@ -270,8 +298,6 @@ async function loadEager(doc) {
   if (main) {
     try {
       await initializeCommerce();
-      // Warm menu data in background; don't block first-section rendering.
-      prefetchMenuCategories().catch(() => {});
       decorateMain(main);
       applyTemplates(doc);
       prioritizeLCPImage(main);
@@ -299,7 +325,7 @@ async function loadEager(doc) {
  * @param {Element} doc The container element
  */
 async function loadLazy(doc) {
-  await prefetchMenuCategories();
+  prefetchMenuCategories().catch(() => {});
   loadHeader(doc.querySelector('header'));
 
   const main = doc.querySelector('main');

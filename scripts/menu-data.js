@@ -226,8 +226,35 @@ const GET_BREADCRUMB_CATEGORIES_QUERY = `
   }
 `;
 
-/** @type {Map<string, import('@ajay0641/tfs-menu/api/menu/menu').CategoryItem[]>} */
+const BREADCRUMB_SESSION_PREFIX = 'hlx-breadcrumb-categories-v1';
+
+/** @type {Map<string, Promise<import('@ajay0641/tfs-menu/api/menu/menu').CategoryItem[]>>} */
 const breadcrumbCategoryCache = new Map();
+
+/**
+ * @param {string} parentId
+ * @returns {import('@ajay0641/tfs-menu/api/menu/menu').CategoryItem[]|null}
+ */
+function readBreadcrumbFromSession(parentId) {
+  try {
+    const stored = sessionStorage.getItem(`${BREADCRUMB_SESSION_PREFIX}:${parentId}`);
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * @param {string} parentId
+ * @param {import('@ajay0641/tfs-menu/api/menu/menu').CategoryItem[]} categories
+ */
+function writeBreadcrumbToSession(parentId, categories) {
+  try {
+    sessionStorage.setItem(`${BREADCRUMB_SESSION_PREFIX}:${parentId}`, JSON.stringify(categories));
+  } catch {
+    // sessionStorage may be unavailable
+  }
+}
 
 /**
  * Flat category list for breadcrumb ancestor resolution (deeper tree than menu).
@@ -238,6 +265,13 @@ async function fetchBreadcrumbCategories(parentId = '2') {
   const cacheKey = String(parentId);
   if (breadcrumbCategoryCache.has(cacheKey)) {
     return breadcrumbCategoryCache.get(cacheKey);
+  }
+
+  const cached = readBreadcrumbFromSession(cacheKey);
+  if (cached) {
+    const resolved = Promise.resolve(cached);
+    breadcrumbCategoryCache.set(cacheKey, resolved);
+    return resolved;
   }
 
   await import('./initializers/menu.js');
@@ -254,7 +288,9 @@ async function fetchBreadcrumbCategories(parentId = '2') {
     if (errors?.length) {
       throw new Error(errors[0].message);
     }
-    return data?.categories || [];
+    const categories = data?.categories || [];
+    writeBreadcrumbToSession(cacheKey, categories);
+    return categories;
   });
 
   breadcrumbCategoryCache.set(cacheKey, promise);

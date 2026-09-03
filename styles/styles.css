@@ -499,6 +499,7 @@ main > .section > div {
   max-width: 1630px;
   margin: auto;
   padding: 0 15px;
+  width: 100%;
 }
 
 main > .section:first-of-type {

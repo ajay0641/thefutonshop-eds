@@ -49,6 +49,14 @@ export function getPerPageConfigForView(config, viewMode) {
   };
 }
 
+export const DEFAULT_PLP_STORE_CONFIG = {
+  listMode: 'grid',
+  gridPerPage: 12,
+  gridPerPageValues: '12,24,36',
+  listPerPage: 10,
+  listPerPageValues: '5,10,15,20,25',
+};
+
 /**
  * Fetches PLP-related Magento admin store configuration.
  * @returns {Promise<{
@@ -60,13 +68,7 @@ export function getPerPageConfigForView(config, viewMode) {
  * }>}
  */
 export async function fetchPlpStoreConfig() {
-  const fallback = {
-    listMode: 'grid',
-    gridPerPage: 12,
-    gridPerPageValues: '12,24,36',
-    listPerPage: 10,
-    listPerPageValues: '5,10,15,20,25',
-  };
+  const fallback = DEFAULT_PLP_STORE_CONFIG;
 
   try {
     const { data } = await CS_FETCH_GRAPHQL.fetchGraphQl(PLP_STORE_CONFIG_QUERY, {

@@ -30,7 +30,11 @@ import {
 } from './view-mode.js';
 import { initFacetAccordions } from './facet-accordion.js';
 import { renderPriceRangeFacetSlot } from './price-range-slider.js';
-import { fetchPlpStoreConfig, getPerPageConfigForView } from './store-config.js';
+import {
+  DEFAULT_PLP_STORE_CONFIG,
+  fetchPlpStoreConfig,
+  getPerPageConfigForView,
+} from './store-config.js';
 import { createPageSizeController, resolvePageSize } from './page-size.js';
 import { createLoadMoreController } from './load-more.js';
 import { createScrollPageUrlSync } from './scroll-page-url.js';
@@ -78,10 +82,9 @@ async function resolveUrlPathFromCategoryId(categoryId) {
 }
 
 export default async function decorate(block) {
-  const [labels, storeConfig] = await Promise.all([
-    fetchPlaceholders(),
-    fetchPlpStoreConfig(),
-  ]);
+  const labels = await fetchPlaceholders();
+  let storeConfig = DEFAULT_PLP_STORE_CONFIG;
+  const storeConfigPromise = fetchPlpStoreConfig().catch(() => DEFAULT_PLP_STORE_CONFIG);
   const listModeConfig = parseListMode(storeConfig.listMode);
   const storeListMode = storeConfig.listMode;
 
@@ -128,12 +131,6 @@ export default async function decorate(block) {
     }
   }
 
-  const categoryNamePromise = config.urlpath
-    ? getCategoryAncestors(config.urlpath)
-      .then((ancestors) => ancestors.at(-1)?.name || null)
-      .catch(() => null)
-    : Promise.resolve(null);
-
   const fragment = document.createRange().createContextualFragment(`
     <div class="search__wrapper">
       <div class="search__category-title"></div>
@@ -164,9 +161,13 @@ export default async function decorate(block) {
     $categoryTitle.append(heading);
   };
 
-  categoryNamePromise.then((name) => {
-    renderCategoryHeading(name);
-  });
+  if (config.urlpath) {
+    window.setTimeout(() => {
+      getCategoryAncestors(config.urlpath)
+        .then((ancestors) => renderCategoryHeading(ancestors.at(-1)?.name || null))
+        .catch(() => {});
+    }, 0);
+  }
 
   // Add url path back to the block for enrichment, incase enrichment block is
   // executed after the plp block and block config is not available
@@ -237,17 +238,12 @@ export default async function decorate(block) {
     }
   }
 
-  // Request search based on the page type on block load
+  // Start product search immediately; do not wait for store-config / menu GraphQL.
   const initialFetchSize = currentPageSize * initialLoadMorePage;
   if (config.urlpath) {
-    await runSearch({
-      pageSize: initialFetchSize,
-    });
+    runSearch({ pageSize: initialFetchSize });
   } else {
-    await runSearch({
-      pageSize: initialFetchSize,
-      phrase: searchState.phrase,
-    });
+    runSearch({ pageSize: initialFetchSize, phrase: searchState.phrase });
   }
 
   const requiresPdpConfiguration = requiresTfsPdpConfiguration;
@@ -258,15 +254,17 @@ export default async function decorate(block) {
   };
   let cardHandlers = defaultCardHandlers;
 
-  // Do not block first PLP paint on cart/wishlist init.
-  createTfsProductCardHandlers(block)
-    .then((handlers) => {
-      cardHandlers = handlers;
-      window.requestAnimationFrame(() => cardHandlers.resyncWishlist());
-    })
-    .catch((error) => {
-      console.warn('PLP card handlers failed to initialize', error);
-    });
+  // Defer cart/wishlist init so it does not compete with productSearch.
+  window.setTimeout(() => {
+    createTfsProductCardHandlers(block)
+      .then((handlers) => {
+        cardHandlers = handlers;
+        window.requestAnimationFrame(() => cardHandlers.resyncWishlist());
+      })
+      .catch((error) => {
+        console.warn('PLP card handlers failed to initialize', error);
+      });
+  }, 0);
 
   const productCardLabels = {
     fromLabel: labels.Search?.From || 'From:',
@@ -281,8 +279,8 @@ export default async function decorate(block) {
     routeProduct: (product) => getProductLink(product.urlKey, product.sku),
     labels: productCardLabels,
     requiresPdpConfiguration,
-    onAddToCartClick: cardHandlers.onAddToCartClick,
-    onWishlistClick: cardHandlers.onWishlistClick,
+    onAddToCartClick: (product, button) => cardHandlers.onAddToCartClick(product, button),
+    onWishlistClick: (product, button) => cardHandlers.onWishlistClick(product, button),
     renderProductImage: (ctx) => {
       const {
         product, defaultImageProps, replaceWith,
@@ -420,6 +418,20 @@ export default async function decorate(block) {
     getBatchSize: () => currentPageSize,
     getLastRequest: () => loadMoreController?.getLastRequest() ?? null,
     buildUrl: () => canonicalizeCategoryUrl(new URL(window.location.href), categoryMeta),
+  });
+
+  storeConfigPromise.then((config) => {
+    storeConfig = config;
+    const resolvedPageSize = resolvePageSize({
+      storeConfig,
+      viewMode: getViewMode(),
+      urlLimit: searchState.pageSize,
+    }) || currentPageSize;
+    if (resolvedPageSize !== currentPageSize) {
+      currentPageSize = resolvedPageSize;
+      pageSizeController?.syncToViewMode?.();
+      runSearch({ pageSize: currentPageSize * initialLoadMorePage });
+    }
   });
 
   let restoringFromHistory = false;

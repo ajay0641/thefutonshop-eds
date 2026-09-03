@@ -75,9 +75,27 @@ function renderBreadcrumbs(container, categoryChain, currentLabel) {
   UI.render(Breadcrumbs, { categories: items })(container);
 }
 
+/**
+ * @returns {{ urlPath: string, cateId?: string }|null}
+ */
+function resolveCategoryMeta() {
+  const fromUrl = getCategoryFromUrl();
+  if (fromUrl?.urlPath) return fromUrl;
+
+  const plp = document.querySelector('.product-list-page');
+  if (plp?.dataset?.urlpath) {
+    return {
+      urlPath: plp.dataset.urlpath,
+      cateId: plp.dataset.categoryId || '',
+    };
+  }
+
+  return null;
+}
+
 export default async function decorate(block) {
   if (!isBreadcrumbEnabled()) {
-    block.closest('.section')?.remove();
+    block.parentElement?.remove();
     return;
   }
 
@@ -98,9 +116,23 @@ export default async function decorate(block) {
     return;
   }
 
-  const categoryMeta = getCategoryFromUrl();
-  if (categoryMeta?.urlPath) {
-    const ancestors = await getCategoryAncestors(categoryMeta.urlPath);
-    renderBreadcrumbs(block, ancestors, null);
-  }
+  // Always paint a trail immediately so the bar is visible while ancestors resolve.
+  renderBreadcrumbs(block, [], null);
+
+  const categoryMeta = resolveCategoryMeta();
+  if (!categoryMeta?.urlPath) return;
+
+  getCategoryAncestors(categoryMeta.urlPath)
+    .then((ancestors) => {
+      if (ancestors.length) {
+        renderBreadcrumbs(block, ancestors, null);
+        return;
+      }
+      const leaf = categoryMeta.urlPath.split('/').filter(Boolean).pop();
+      renderBreadcrumbs(block, [], leaf || null);
+    })
+    .catch(() => {
+      const leaf = categoryMeta.urlPath.split('/').filter(Boolean).pop();
+      renderBreadcrumbs(block, [], leaf || null);
+    });
 }
