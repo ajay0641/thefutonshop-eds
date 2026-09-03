@@ -525,7 +525,7 @@ body.minicart-open {
 
 @media (min-width: 900px) {
   header.header-wrapper {
-    min-height: 178px;
+    min-height: 176px;
   }
 
   header nav .nav-hamburger {

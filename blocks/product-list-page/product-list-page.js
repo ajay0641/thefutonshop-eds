@@ -128,11 +128,11 @@ export default async function decorate(block) {
     }
   }
 
-  let categoryName = null;
-  if (config.urlpath) {
-    const ancestors = await getCategoryAncestors(config.urlpath);
-    categoryName = ancestors.at(-1)?.name || null;
-  }
+  const categoryNamePromise = config.urlpath
+    ? getCategoryAncestors(config.urlpath)
+      .then((ancestors) => ancestors.at(-1)?.name || null)
+      .catch(() => null)
+    : Promise.resolve(null);
 
   const fragment = document.createRange().createContextualFragment(`
     <div class="search__wrapper">
@@ -157,11 +157,16 @@ export default async function decorate(block) {
   block.innerHTML = '';
   block.appendChild(fragment);
 
-  if (categoryName) {
+  const renderCategoryHeading = (name) => {
+    if (!name || $categoryTitle.querySelector('h1')) return;
     const heading = document.createElement('h1');
-    heading.textContent = categoryName;
+    heading.textContent = name;
     $categoryTitle.append(heading);
-  }
+  };
+
+  categoryNamePromise.then((name) => {
+    renderCategoryHeading(name);
+  });
 
   // Add url path back to the block for enrichment, incase enrichment block is
   // executed after the plp block and block config is not available
@@ -246,8 +251,22 @@ export default async function decorate(block) {
   }
 
   const requiresPdpConfiguration = requiresTfsPdpConfiguration;
+  const defaultCardHandlers = {
+    onAddToCartClick: async () => {},
+    onWishlistClick: async () => {},
+    resyncWishlist: () => {},
+  };
+  let cardHandlers = defaultCardHandlers;
 
-  const cardHandlers = await createTfsProductCardHandlers(block);
+  // Do not block first PLP paint on cart/wishlist init.
+  createTfsProductCardHandlers(block)
+    .then((handlers) => {
+      cardHandlers = handlers;
+      window.requestAnimationFrame(() => cardHandlers.resyncWishlist());
+    })
+    .catch((error) => {
+      console.warn('PLP card handlers failed to initialize', error);
+    });
 
   const productCardLabels = {
     fromLabel: labels.Search?.From || 'From:',

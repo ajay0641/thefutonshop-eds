@@ -270,7 +270,8 @@ async function loadEager(doc) {
   if (main) {
     try {
       await initializeCommerce();
-      await prefetchMenuCategories();
+      // Warm menu data in background; don't block first-section rendering.
+      prefetchMenuCategories().catch(() => {});
       decorateMain(main);
       applyTemplates(doc);
       prioritizeLCPImage(main);
