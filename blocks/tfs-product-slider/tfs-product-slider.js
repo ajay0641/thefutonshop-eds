@@ -83,6 +83,8 @@ function syncCartAuthHeaders(cartApi) {
  * @param {typeof import('@dropins/storefront-cart/api.js')} cartApi
  */
 async function ensureCartReady(cartApi) {
+  if (cartApi.getCartDataFromCache()) return;
+
   await new Promise((resolve) => {
     let settled = false;
     const finish = () => {
@@ -94,12 +96,6 @@ async function ensureCartReady(cartApi) {
     events.on('cart/initialized', finish, { eager: true });
     window.setTimeout(finish, 5000);
   });
-
-  try {
-    await cartApi.getCartData();
-  } catch {
-    // Guest without a cart yet — addProductsToCart will create one.
-  }
 }
 
 /**
