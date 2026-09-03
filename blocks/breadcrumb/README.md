@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Breadcrumb block renders a visible category trail on **Product List Page (PLP)** and **Product Details Page (PDP)** views. It is auto-injected by `buildBreadcrumbBlock()` in `scripts/scripts.js` when a page contains a `product-list-page` or `product-details` block and breadcrumbs are enabled.
+The Breadcrumb block renders a visible category trail on **Product List Page (PLP)**, **Product Details Page (PDP)**, and **Cart** views. It is auto-injected by `buildBreadcrumbBlock()` in `scripts/scripts.js` when a page contains a `product-list-page`, `product-details`, or `commerce-cart` block and breadcrumbs are enabled.
 
 The block uses the drop-in `Breadcrumbs` component from `@dropins/tools/components.js` and resolves category data from the current URL and Catalog Service.
 
@@ -14,7 +14,7 @@ The breadcrumb block has no authored block fields. Visibility is controlled by p
 
 | Metadata key | Values | Effect |
 |--------------|--------|--------|
-| `breadcrumb` | `auto` (default) | Show breadcrumbs on PLP/PDP when auto-injected. |
+| `breadcrumb` | `auto` (default) | Show breadcrumbs on PLP/PDP/cart when auto-injected. |
 | `breadcrumb` | `off`, `false`, `none` | Remove the breadcrumb section from the page. |
 
 Example metadata block on a category template:
@@ -31,10 +31,10 @@ The `metadata` block `breadcrumb: auto` value is also used by SEO/bulk metadata 
 
 ### Auto-injection
 
-During eager page decoration, `scripts.js` prepends a section with an empty `.breadcrumb` block above the PLP or PDP block when:
+During eager page decoration, `scripts.js` prepends a section with an empty `.breadcrumb` block above the PLP, PDP, or cart block when:
 
 1. No `.breadcrumb` block already exists on the page, and
-2. A `.product-list-page` or `.product-details` block is present.
+2. A `.product-list-page`, `.product-details`, or `.commerce-cart` block is present.
 
 Authors can also place a `breadcrumb` block manually in a template section if preferred; auto-injection is skipped when one already exists.
 
@@ -44,6 +44,7 @@ Authors can also place a `breadcrumb` block manually in a template section if pr
 |-----------|--------|-------|
 | **PLP** | `getCategoryFromUrl()` + `getCategoryAncestors()` from `scripts/menu-data.js` | `Home` → parent categories → current category |
 | **PDP** | `events.on('pdp/data')` + deepest product category + `getCategoryAncestors()` | `Home` → category ancestors → product name |
+| **Cart** | Static cart page label | `Home` → `Shopping Cart` |
 
 Category links use `getCategoryLink(urlPath, categoryId)` (`/categories/{urlPath}/{categoryId}`).
 

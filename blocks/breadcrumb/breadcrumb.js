@@ -27,6 +27,14 @@ function isPdpPage() {
 }
 
 /**
+ * @returns {boolean}
+ */
+function isCartPage() {
+  return !!document.querySelector('main .commerce-cart')
+    || /\/cart\/?$/.test(window.location.pathname);
+}
+
+/**
  * @param {object} product
  * @returns {Promise<Array<{ name: string, urlPath: string, id: string }>>}
  */
@@ -75,6 +83,11 @@ export default async function decorate(block) {
 
   block.innerHTML = '';
   block.closest('.section')?.classList.add('breadcrumb-container');
+
+  if (isCartPage()) {
+    renderBreadcrumbs(block, [], 'Shopping Cart');
+    return;
+  }
 
   if (isPdpPage()) {
     events.on('pdp/data', async (product) => {
