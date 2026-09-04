@@ -249,43 +249,80 @@ function isRequiredOption(opt) {
 }
 
 function decorateOptionLabels(optionsContainer, optionsData) {
-  if (!optionsContainer || !optionsData?.length) return;
+  if (!optionsContainer) return;
 
   const fieldLabels = [...optionsContainer.querySelectorAll(
     '.pdp-swatches__field__label, .dropin-field__label, .dropin-picker__label, label',
   )];
 
-  optionsData.forEach((opt) => {
-    const isRequired = isRequiredOption(opt);
+  if (optionsData?.length) {
+    optionsData.forEach((opt) => {
+      const isRequired = isRequiredOption(opt);
 
-    let targetField = optionsContainer.querySelector(`#swatch-item-${opt.id}`)
-      || optionsContainer.querySelector(`[data-slot-key="product-swatch--${opt.id}"]`);
+      let targetField = optionsContainer.querySelector(`#swatch-item-${opt.id}`)
+        || optionsContainer.querySelector(`[data-slot-key="product-swatch--${opt.id}"]`);
 
-    let targetLabel = targetField?.querySelector(
-      '.pdp-swatches__field__label, .dropin-field__label, .dropin-picker__label, label',
-    );
+      let targetLabel = targetField?.querySelector(
+        '.pdp-swatches__field__label, .dropin-field__label, .dropin-picker__label, label',
+      );
 
-    if (!targetLabel) {
-      targetLabel = fieldLabels.find((lbl) => {
-        const text = lbl.textContent || '';
-        const title = opt.title || opt.label || '';
-        return title && text.toLowerCase().includes(title.toLowerCase());
-      });
+      if (!targetLabel) {
+        targetLabel = fieldLabels.find((lbl) => {
+          const text = lbl.textContent || '';
+          const title = opt.title || opt.label || '';
+          return title && text.toLowerCase().includes(title.toLowerCase());
+        });
+        if (targetLabel) {
+          targetField = targetLabel.closest('.pdp-swatches__field, .dropin-field, .dropin-picker, .field');
+        }
+      }
+
       if (targetLabel) {
-        targetField = targetLabel.closest('.pdp-swatches__field, .dropin-field, .dropin-picker');
+        targetLabel.classList.toggle('product-details__required-label', isRequired);
+        const reqSpan = targetLabel.querySelector('.product-details__required');
+        if (reqSpan) {
+          reqSpan.remove();
+        }
       }
-    }
 
-    if (targetLabel) {
-      targetLabel.classList.toggle('product-details__required-label', isRequired);
-      const reqSpan = targetLabel.querySelector('.product-details__required');
-      if (reqSpan) {
-        reqSpan.remove();
+      if (targetField) {
+        targetField.classList.toggle('product-details__field--required', isRequired);
+
+        if (!targetField.dataset.accordionSet) {
+          targetField.dataset.accordionSet = 'true';
+          if (isRequired) {
+            targetField.classList.add('is-open');
+            targetField.classList.remove('is-closed');
+            if (targetLabel) targetLabel.setAttribute('aria-expanded', 'true');
+          } else {
+            targetField.classList.add('is-closed');
+            targetField.classList.remove('is-open');
+            if (targetLabel) targetLabel.setAttribute('aria-expanded', 'false');
+          }
+        }
       }
-    }
+    });
+  }
 
-    if (targetField) {
-      targetField.classList.toggle('product-details__field--required', isRequired);
+  const allFields = [...optionsContainer.querySelectorAll(
+    '.pdp-swatches__field, .dropin-field, .field',
+  )];
+  allFields.forEach((field) => {
+    if (!field.dataset.accordionSet) {
+      field.dataset.accordionSet = 'true';
+      const isRequired = field.classList.contains('product-details__field--required');
+      const label = field.querySelector(
+        '.pdp-swatches__field__label, .dropin-field__label, .dropin-picker__label, label',
+      );
+      if (isRequired) {
+        field.classList.add('is-open');
+        field.classList.remove('is-closed');
+        if (label) label.setAttribute('aria-expanded', 'true');
+      } else {
+        field.classList.add('is-closed');
+        field.classList.remove('is-open');
+        if (label) label.setAttribute('aria-expanded', 'false');
+      }
     }
   });
 }
@@ -873,6 +910,31 @@ export default async function decorate(block) {
     }
   });
   optionsObserver.observe($options, { childList: true, subtree: true });
+
+  if ($options) {
+    $options.addEventListener('click', (event) => {
+      const label = event.target.closest(
+        '.pdp-swatches__field__label, .dropin-field__label, .dropin-picker__label, label, .accrodian-label',
+      );
+      if (!label || !$options.contains(label)) return;
+
+      const field = label.closest(
+        '.pdp-swatches__field, .dropin-field, .field, [id^="swatch-item-"], [data-slot-key]',
+      );
+      if (!field) return;
+
+      const isClosed = field.classList.contains('is-closed');
+      if (isClosed) {
+        field.classList.remove('is-closed');
+        field.classList.add('is-open');
+        label.setAttribute('aria-expanded', 'true');
+      } else {
+        field.classList.remove('is-open');
+        field.classList.add('is-closed');
+        label.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
 
   // Lifecycle Events
   events.on('pdp/data', (data) => {
