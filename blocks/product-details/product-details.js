@@ -100,12 +100,194 @@ function stripHtml(html) {
   return html.replace(/<[^>]*>/g, '').trim();
 }
 
-function updateShortDescriptionVisibility(shortEl, product) {
-  if (!shortEl || !product) return;
-  const shortText = stripHtml(product.shortDescription || '');
-  const shouldHide = !shortText
-    || shortText.toLowerCase() === (product.name || '').toLowerCase();
-  shortEl.classList.toggle('product-details__short-description--hidden', shouldHide);
+function updateTabVisibilities(block, product, hasFaqs) {
+  if (!block) return;
+
+  const descEl = block.querySelector('.product-details__description');
+  const detailsText = stripHtml(product?.description || descEl?.textContent || '');
+  const hasDetails = !!detailsText;
+
+  const shortEl = block.querySelector('.product-details__short-description');
+  const shortText = stripHtml(product?.shortDescription || shortEl?.textContent || '');
+  const hasOverview = !!shortText && shortText.toLowerCase() !== (product?.name || '').toLowerCase();
+
+  const faqContainer = block.querySelector('.product-details__faq-list');
+  const faqItemsCount = faqContainer?.querySelectorAll('.faq-item')?.length || 0;
+  const isFaqLoaded = hasFaqs !== undefined ? hasFaqs : faqItemsCount > 0;
+
+  const tabConfigs = [
+    { key: 'details', hasData: hasDetails },
+    { key: 'overview', hasData: hasOverview },
+    { key: 'faq', hasData: isFaqLoaded },
+  ];
+
+  let activeTabSet = false;
+
+  tabConfigs.forEach(({ key, hasData }) => {
+    const btn = block.querySelector(`#product-details-tab-btn-${key}`);
+    const panel = block.querySelector(`#product-details-tab-${key}`);
+
+    if (btn && panel) {
+      if (!hasData) {
+        btn.hidden = true;
+        btn.classList.remove('is-active');
+        btn.setAttribute('aria-selected', 'false');
+        panel.hidden = true;
+        panel.classList.remove('is-active');
+      } else {
+        btn.hidden = false;
+        const currentActive = block.querySelector('.product-details__tab.is-active:not([hidden])');
+        if (!activeTabSet && (!currentActive || currentActive === btn)) {
+          activeTabSet = true;
+          btn.classList.add('is-active');
+          btn.setAttribute('aria-selected', 'true');
+          panel.classList.add('is-active');
+          panel.hidden = false;
+        } else if (currentActive && currentActive === btn) {
+          activeTabSet = true;
+          btn.classList.add('is-active');
+          btn.setAttribute('aria-selected', 'true');
+          panel.classList.add('is-active');
+          panel.hidden = false;
+        } else {
+          btn.classList.remove('is-active');
+          btn.setAttribute('aria-selected', 'false');
+          panel.classList.remove('is-active');
+          panel.hidden = true;
+        }
+      }
+    }
+  });
+
+  const tabsContainer = block.querySelector('.product-details__tabs');
+  if (tabsContainer) {
+    tabsContainer.hidden = !tabConfigs.some((t) => t.hasData);
+  }
+}
+
+function moveFaqIntoTab(block) {
+  if (!block) return false;
+  const faqTabPanel = block.querySelector('#product-details-tab-faq');
+  if (!faqTabPanel) return false;
+
+  const main = block.closest('main') || document.querySelector('main');
+  if (!main) return false;
+
+  const faqElement = main.querySelector('.faq-wrapper, .faq, [data-block-name="faq"]');
+  if (!faqElement) return false;
+
+  if (faqTabPanel.contains(faqElement)) return true;
+
+  const parentSection = faqElement.closest('.section');
+  const targetContainer = faqTabPanel.querySelector('.product-details__faq-list') || faqTabPanel;
+  targetContainer.replaceChildren(faqElement);
+
+  if (parentSection && parentSection !== faqTabPanel.closest('.section')) {
+    const hasRemainingContent = [...parentSection.children].some(
+      (child) => child.textContent.trim() !== '' && !child.classList.contains('section-metadata'),
+    );
+    if (!hasRemainingContent) {
+      parentSection.style.display = 'none';
+    }
+  }
+
+  return true;
+}
+
+function setupFaqTabIntegration(block, onFaqMoved) {
+  const moved = moveFaqIntoTab(block);
+  if (moved) {
+    onFaqMoved(true);
+    return;
+  }
+
+  const main = block.closest('main') || document.querySelector('main');
+  if (!main) {
+    onFaqMoved(false);
+    return;
+  }
+
+  const observer = new MutationObserver(() => {
+    if (moveFaqIntoTab(block)) {
+      onFaqMoved(true);
+      observer.disconnect();
+    }
+  });
+
+  observer.observe(main, { childList: true, subtree: true });
+
+  setTimeout(() => {
+    observer.disconnect();
+    onFaqMoved(moveFaqIntoTab(block));
+  }, 2000);
+}
+
+function isRequiredOption(opt) {
+  if (!opt) return false;
+  if (opt.required === true) return true;
+  if (opt.typename === 'ProductViewOptionValueConfiguration') return true;
+
+  const items = opt.items || opt.values || [];
+  if (items.some((v) => v.__typename === 'ProductViewOptionValueConfiguration' || v.typename === 'ProductViewOptionValueConfiguration')) {
+    return true;
+  }
+
+  const isOptionalCustomOption = opt.required === false && (
+    opt.typename === 'ProductViewOptionValueProduct'
+    || opt.typename === 'ProductViewOptionValueCustom'
+    || items.some((v) => v.__typename === 'ProductViewOptionValueProduct'
+      || v.typename === 'ProductViewOptionValueProduct'
+      || v.__typename === 'ProductViewOptionValueCustom'
+      || v.typename === 'ProductViewOptionValueCustom')
+  );
+
+  if (isOptionalCustomOption) {
+    return false;
+  }
+
+  return true;
+}
+
+function decorateOptionLabels(optionsContainer, optionsData) {
+  if (!optionsContainer || !optionsData?.length) return;
+
+  const fieldLabels = [...optionsContainer.querySelectorAll(
+    '.pdp-swatches__field__label, .dropin-field__label, .dropin-picker__label, label',
+  )];
+
+  optionsData.forEach((opt) => {
+    const isRequired = isRequiredOption(opt);
+
+    let targetField = optionsContainer.querySelector(`#swatch-item-${opt.id}`)
+      || optionsContainer.querySelector(`[data-slot-key="product-swatch--${opt.id}"]`);
+
+    let targetLabel = targetField?.querySelector(
+      '.pdp-swatches__field__label, .dropin-field__label, .dropin-picker__label, label',
+    );
+
+    if (!targetLabel) {
+      targetLabel = fieldLabels.find((lbl) => {
+        const text = lbl.textContent || '';
+        const title = opt.title || opt.label || '';
+        return title && text.toLowerCase().includes(title.toLowerCase());
+      });
+      if (targetLabel) {
+        targetField = targetLabel.closest('.pdp-swatches__field, .dropin-field, .dropin-picker');
+      }
+    }
+
+    if (targetLabel) {
+      targetLabel.classList.toggle('product-details__required-label', isRequired);
+      const reqSpan = targetLabel.querySelector('.product-details__required');
+      if (reqSpan) {
+        reqSpan.remove();
+      }
+    }
+
+    if (targetField) {
+      targetField.classList.toggle('product-details__field--required', isRequired);
+    }
+  });
 }
 
 function layoutHeaderMeta(headerEl, wishlistEl) {
@@ -126,11 +308,13 @@ function initPdpTabs(block) {
   const tabList = block.querySelector('.product-details__tab-list');
   if (!tabList) return;
 
-  const tabs = [...tabList.querySelectorAll('[role="tab"]:not([hidden])')];
-  const panels = [...block.querySelectorAll('.product-details__tab-panel')];
+  const getVisibleTabs = () => [...tabList.querySelectorAll('[role="tab"]:not([hidden])')];
+  const getPanels = () => [...block.querySelectorAll('.product-details__tab-panel')];
 
   const activateTab = (activeTab) => {
     const target = activeTab.dataset.tab;
+    const tabs = getVisibleTabs();
+    const panels = getPanels();
     tabs.forEach((tab) => {
       const isActive = tab === activeTab;
       tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
@@ -144,20 +328,31 @@ function initPdpTabs(block) {
     });
   };
 
-  tabs.forEach((tab) => {
-    tab.addEventListener('click', () => activateTab(tab));
-    tab.addEventListener('keydown', (event) => {
-      const index = tabs.indexOf(tab);
-      if (event.key === 'ArrowRight') {
-        event.preventDefault();
-        activateTab(tabs[(index + 1) % tabs.length]);
-        tabs[(index + 1) % tabs.length].focus();
-      } else if (event.key === 'ArrowLeft') {
-        event.preventDefault();
-        activateTab(tabs[(index - 1 + tabs.length) % tabs.length]);
-        tabs[(index - 1 + tabs.length) % tabs.length].focus();
-      }
-    });
+  tabList.addEventListener('click', (event) => {
+    const tab = event.target.closest('[role="tab"]:not([hidden])');
+    if (tab && tabList.contains(tab)) {
+      activateTab(tab);
+    }
+  });
+
+  tabList.addEventListener('keydown', (event) => {
+    const tab = event.target.closest('[role="tab"]:not([hidden])');
+    if (!tab) return;
+    const tabs = getVisibleTabs();
+    const index = tabs.indexOf(tab);
+    if (index === -1) return;
+
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      const next = tabs[(index + 1) % tabs.length];
+      activateTab(next);
+      next.focus();
+    } else if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      const prev = tabs[(index - 1 + tabs.length) % tabs.length];
+      activateTab(prev);
+      prev.focus();
+    }
   });
 }
 
@@ -371,7 +566,6 @@ export default async function decorate(block) {
           </div>
           <div class="product-details__add-to-cart-status" role="status" aria-live="polite"></div>
         </div>
-        <div class="product-details__short-description"></div>
       </div>
     </div>
     <div class="product-details__tabs">
@@ -379,12 +573,28 @@ export default async function decorate(block) {
         <button type="button" role="tab" id="product-details-tab-btn-details"
           aria-controls="product-details-tab-details" aria-selected="true"
           class="product-details__tab is-active" data-tab="details">Details</button>
+        <button type="button" role="tab" id="product-details-tab-btn-overview"
+          aria-controls="product-details-tab-overview" aria-selected="false"
+          class="product-details__tab" data-tab="overview">Overview</button>
+        <button type="button" role="tab" id="product-details-tab-btn-faq"
+          aria-controls="product-details-tab-faq" aria-selected="false"
+          class="product-details__tab" data-tab="faq">FAQ</button>
       </div>
       <div class="product-details__tab-panels">
         <div id="product-details-tab-details" role="tabpanel"
           class="product-details__tab-panel is-active" data-tab="details"
           aria-labelledby="product-details-tab-btn-details">
           <div class="product-details__description"></div>
+        </div>
+        <div id="product-details-tab-overview" role="tabpanel"
+          class="product-details__tab-panel" data-tab="overview"
+          aria-labelledby="product-details-tab-btn-overview" hidden>
+          <div class="product-details__short-description"></div>
+        </div>
+        <div id="product-details-tab-faq" role="tabpanel"
+          class="product-details__tab-panel" data-tab="faq"
+          aria-labelledby="product-details-tab-btn-faq" hidden>
+          <div class="product-details__faq-list"></div>
         </div>
       </div>
     </div>
@@ -505,10 +715,16 @@ export default async function decorate(block) {
   layoutHeaderMeta($header, $wishlistHost);
   initPdpTabs(block);
 
+  let hasFaqsLoaded = false;
+  setupFaqTabIntegration(block, (hasFaqs) => {
+    hasFaqsLoaded = hasFaqs;
+    updateTabVisibilities(block, product || events.lastPayload('pdp/data'), hasFaqsLoaded);
+  });
+
   if (product) {
     updateStockBadge($stock, product.inStock !== false, labels);
     renderPdpPricing($price, product, labels);
-    updateShortDescriptionVisibility($shortDescription, product);
+    updateTabVisibilities(block, product, hasFaqsLoaded);
   }
 
   // Configuration – Button - Add to Cart
@@ -519,6 +735,47 @@ export default async function decorate(block) {
         ? labels.Global?.UpdatingInCart
         : labels.Global?.AddingToCart;
       try {
+        // Validation check for required options
+        const productData = events.lastPayload('pdp/data');
+        const options = productData?.options || [];
+        const requiredOptions = options.filter((opt) => isRequiredOption(opt));
+
+        const values = pdpApi.getProductConfigurationValues();
+        const selectedUids = values?.optionsUIDs || [];
+
+        const missingRequired = requiredOptions.filter((opt) => {
+          const items = opt.items || opt.values || [];
+          if (!items || !items.length) return false;
+          return !items.some((v) => selectedUids.includes(v.id));
+        });
+
+        if (missingRequired.length > 0) {
+          const desc = missingRequired.length === 1
+            ? 'You need to choose options for your item.'
+            : 'You need to choose required options for your item.';
+
+          inlineAlert?.remove();
+          inlineAlert = await UI.render(InLineAlert, {
+            heading: 'Required Selection Missing',
+            description: desc,
+            icon: h(Icon, { source: 'Warning' }),
+            'aria-live': 'assertive',
+            role: 'alert',
+            onDismiss: () => {
+              inlineAlert.remove();
+            },
+          })($alert);
+
+          $alert.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          });
+          return;
+        }
+
+        // Reset any existing alert if validation passes
+        inlineAlert?.remove();
+
         addToCart.setProps((prev) => ({
           ...prev,
           children: buttonActionText,
@@ -526,47 +783,58 @@ export default async function decorate(block) {
         }));
         $addToCartStatus.textContent = buttonActionText ?? 'Adding to Cart';
 
-        // get the current selection values
-        const values = pdpApi.getProductConfigurationValues();
-        const valid = pdpApi.isProductConfigurationValid();
-
         // add or update the product in the cart
-        if (valid) {
-          if (isUpdateMode) {
-            // --- Update existing item ---
-            const { updateProductsFromCart } = await import(
-              '@dropins/storefront-cart/api.js'
-            );
-
-            await updateProductsFromCart([{ ...values, uid: itemUidFromUrl }]);
-
-            // --- START REDIRECT ON UPDATE ---
-            const updatedSku = values?.sku;
-            if (updatedSku) {
-              const cartRedirectUrl = new URL(
-                rootLink('/cart'),
-                window.location.origin,
-              );
-              cartRedirectUrl.searchParams.set('itemUid', itemUidFromUrl);
-              window.location.href = cartRedirectUrl.toString();
-            } else {
-              // Fallback if SKU is somehow missing (shouldn't happen in normal flow)
-              console.warn(
-                'Could not retrieve SKU for updated item. Redirecting to cart without parameter.',
-              );
-              window.location.href = rootLink('/cart');
-            }
-            return;
-          }
-          // --- Add new item ---
-          const { addProductsToCart } = await import(
+        if (isUpdateMode) {
+          // --- Update existing item ---
+          const { updateProductsFromCart } = await import(
             '@dropins/storefront-cart/api.js'
           );
-          await addProductsToCart([{ ...values }]);
+
+          await updateProductsFromCart([{ ...values, uid: itemUidFromUrl }]);
+
+          // --- START REDIRECT ON UPDATE ---
+          const updatedSku = values?.sku;
+          if (updatedSku) {
+            const cartRedirectUrl = new URL(
+              rootLink('/cart'),
+              window.location.origin,
+            );
+            cartRedirectUrl.searchParams.set('itemUid', itemUidFromUrl);
+            window.location.href = cartRedirectUrl.toString();
+          } else {
+            // Fallback if SKU is somehow missing (shouldn't happen in normal flow)
+            console.warn(
+              'Could not retrieve SKU for updated item. Redirecting to cart without parameter.',
+            );
+            window.location.href = rootLink('/cart');
+          }
+          return;
         }
 
-        // reset any previous alerts if successful
+        // --- Add new item ---
+        const { addProductsToCart } = await import(
+          '@dropins/storefront-cart/api.js'
+        );
+        await addProductsToCart([{ ...values }]);
+
+        // Render success alert
         inlineAlert?.remove();
+        inlineAlert = await UI.render(InLineAlert, {
+          heading: 'Added to Cart',
+          description: `${productData?.name || 'Item'} has been successfully added to your cart.`,
+          type: 'success',
+          icon: h(Icon, { source: 'Check' }),
+          'aria-live': 'polite',
+          role: 'status',
+          onDismiss: () => {
+            inlineAlert?.remove();
+          },
+        })($alert);
+
+        $alert.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
       } catch (error) {
         // add alert message
         inlineAlert = await UI.render(InLineAlert, {
@@ -598,19 +866,35 @@ export default async function decorate(block) {
     },
   })($addToCart);
 
+  const optionsObserver = new MutationObserver(() => {
+    const optionsData = events.lastPayload('pdp/data')?.options;
+    if (optionsData) {
+      decorateOptionLabels($options, optionsData);
+    }
+  });
+  optionsObserver.observe($options, { childList: true, subtree: true });
+
   // Lifecycle Events
   events.on('pdp/data', (data) => {
     ensureProductImages(data);
     isOutOfStock = data?.inStock === false;
     updateStockBadge($stock, !isOutOfStock, labels);
     renderPdpPricing($price, data, labels);
-    updateShortDescriptionVisibility($shortDescription, data);
+    updateTabVisibilities(block, data, hasFaqsLoaded);
+    addToCart.setProps((prev) => ({ ...prev, disabled: isOutOfStock }));
+    decorateOptionLabels($options, data?.options);
+  }, { eager: true });
+
+  events.on('pdp/valid', () => {
+    // Keep add to cart button enabled unless out of stock; validation occurs on click
     addToCart.setProps((prev) => ({ ...prev, disabled: isOutOfStock }));
   }, { eager: true });
 
-  events.on('pdp/valid', (valid) => {
-    // update add to cart button disabled state based on product selection validity and stock status
-    addToCart.setProps((prev) => ({ ...prev, disabled: isOutOfStock || !valid }));
+  events.on('pdp/values', () => {
+    const optionsData = events.lastPayload('pdp/data')?.options;
+    if (optionsData) {
+      decorateOptionLabels($options, optionsData);
+    }
   }, { eager: true });
 
   // Handle option changes — wishlist syncs via pdp/values listener in setupPdpWishlist
