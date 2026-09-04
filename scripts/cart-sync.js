@@ -80,12 +80,17 @@ export function resolveCartItemUid(item, cart) {
 
 /**
  * Loads the cart owned by the current user and persists its id for mutations.
- * Prefer drop-in refresh (customerCart + guest merge). Only drop a stale guest
- * cart-id when refresh fails under an auth session.
+ * Logged-in: drop guest cart-id first so refresh uses customerCart only.
+ * A guest id + Bearer token causes ownership errors and checkout sync loops.
  * @returns {Promise<object|null>}
  */
 export async function ensureOwnedCart() {
   const isAuth = restoreCartAuthState();
+
+  if (isAuth) {
+    clearStoredCartId();
+    restoreCartAuthState();
+  }
 
   try {
     const cart = await Cart.refreshCart();
@@ -99,20 +104,7 @@ export async function ensureOwnedCart() {
   }
 
   if (isAuth) {
-    // Stale guest id + Bearer often breaks refresh/merge — clear and retry.
-    clearStoredCartId();
     restoreCartAuthState();
-    try {
-      const cart = await Cart.refreshCart();
-      if (cart?.id) {
-        Cart.s.cartId = cart.id;
-        events.emit('cart/data', cart);
-        return cart;
-      }
-    } catch (error) {
-      console.error('Failed to refresh customer cart after clearing guest id:', error);
-    }
-
     try {
       const customerCart = await Cart.getCartData();
       if (customerCart?.id) {

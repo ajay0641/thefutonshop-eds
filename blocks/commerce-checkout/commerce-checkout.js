@@ -68,6 +68,7 @@ import {
 
 import { rootLink } from '../../scripts/commerce.js';
 import { getUserTokenCookie } from '../../scripts/initializers/index.js';
+import { ensureOwnedCart } from '../../scripts/cart-sync.js';
 
 // Initializers — cart before checkout so checkout does not mount against a null cart
 import '../../scripts/initializers/cart.js';
@@ -79,6 +80,9 @@ import '../../scripts/initializers/payment-services.js';
 import { renderCheckoutSuccess, preloadCheckoutSuccess } from '../commerce-checkout-success/commerce-checkout-success.js';
 
 preloadCheckoutSuccess();
+
+/** One-shot — prevents null checkout ↔ stale cart/updated infinite error loops. */
+let checkoutCartRecoveryPromise = null;
 
 /**
  * Redirect to cart only when we have a definitive empty cart model.
@@ -118,16 +122,33 @@ function waitForCartInitialized() {
 }
 
 /**
- * If checkout initialized with null before cart was ready, poke cart/updated so
- * the checkout drop-in re-syncs (it only listens to cart/updated after init).
- * @param {import('@dropins/storefront-cart/data/models').CartModel|null|undefined} cartData
+ * If checkout has no usable model, sync once from an owned cart.
+ * Must not re-emit the same stale guest cart after sync fails — that loops
+ * ("cannot perform operations on cart" / "allowed for logged in customer").
+ * @returns {Promise<void>}
  */
-function recoverCheckoutFromCart(cartData) {
-  if (!cartData?.items?.length) return;
-  const checkoutData = events.lastPayload('checkout/updated')
-    ?? events.lastPayload('checkout/initialized');
-  if (checkoutData) return;
-  events.emit('cart/updated', cartData);
+function recoverCheckoutFromCart() {
+  if (checkoutCartRecoveryPromise) return checkoutCartRecoveryPromise;
+
+  const checkoutOk = events.lastPayload('checkout/updated')
+    || events.lastPayload('checkout/initialized');
+  if (checkoutOk) return Promise.resolve();
+
+  checkoutCartRecoveryPromise = (async () => {
+    try {
+      const owned = await ensureOwnedCart();
+      if (!owned?.id) return;
+      // Re-check — another path may have hydrated checkout while we fetched
+      if (events.lastPayload('checkout/updated') || events.lastPayload('checkout/initialized')) {
+        return;
+      }
+      events.emit('cart/updated', owned);
+    } catch (error) {
+      console.error('Checkout cart recovery failed:', error);
+    }
+  })();
+
+  return checkoutCartRecoveryPromise;
 }
 
 export default async function decorate(block) {
@@ -135,11 +156,19 @@ export default async function decorate(block) {
   document.title = 'Checkout';
 
   // Ensure cart has settled before mounting checkout (avoids null init on refresh)
-  const cartData = await waitForCartInitialized();
+  let cartData = await waitForCartInitialized();
+  // Logged-in: replace stale guest cart id before checkout sync (stops ownership loops)
+  if (getUserTokenCookie()) {
+    cartData = (await ensureOwnedCart()) || cartData;
+  }
   redirectToCartIfEmpty(cartData);
 
   // Mount checkout after cart/initialized so its eager cart listener gets real data
   await import('../../scripts/initializers/checkout.js');
+
+  if (cartData?.id) {
+    events.emit('cart/updated', cartData);
+  }
 
   // Container and component references
   let shippingForm;
@@ -446,10 +475,8 @@ export default async function decorate(block) {
 
   async function handleCheckoutUpdated(data) {
     if (!data) {
-      // Null init/reset — try to recover from the latest cart model
-      recoverCheckoutFromCart(
-        events.lastPayload('cart/data') ?? events.lastPayload('cart/initialized'),
-      );
+      // Null init/reset — one-shot owned-cart recovery (no stale-cart re-emit loop)
+      await recoverCheckoutFromCart();
       return;
     }
     await initializeCheckout(data);
@@ -507,13 +534,11 @@ export default async function decorate(block) {
   events.on('cart/initialized', redirectToCartIfEmpty, { eager: true });
   events.on('cart/data', (data) => {
     redirectToCartIfEmpty(data);
-    recoverCheckoutFromCart(data);
+    recoverCheckoutFromCart();
   });
 
-  // Logged-in refresh: if checkout still has no model, force a cart sync once
+  // Logged-in: one recovery if checkout still has no model after mount
   if (getUserTokenCookie()) {
-    recoverCheckoutFromCart(
-      events.lastPayload('cart/data') ?? events.lastPayload('cart/initialized'),
-    );
+    await recoverCheckoutFromCart();
   }
 }
