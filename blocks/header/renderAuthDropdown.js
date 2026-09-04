@@ -1,4 +1,5 @@
 import { getCookie } from '@dropins/tools/lib.js';
+import { events } from '@dropins/tools/event-bus.js';
 import * as authApi from '@dropins/storefront-auth/api.js';
 import { render as authRenderer } from '@dropins/storefront-auth/render.js';
 import { SignIn } from '@dropins/storefront-auth/containers/SignIn.js';
@@ -7,6 +8,25 @@ import {
   CUSTOMER_CREATE_ACCOUNT_PATH,
   rootLink,
 } from '../../scripts/commerce.js';
+
+const AUTH_COOKIE_NAMES = [
+  'auth_dropin_user_token',
+  'auth_dropin_firstname',
+  'auth_dropin_lastname',
+  'auth_dropin_admin_session',
+];
+
+/**
+ * Clears auth cookies with the same attributes used when they were set
+ * (path, SameSite, Secure) so logout always drops the client session.
+ */
+function clearAuthCookies() {
+  const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+  const secure = isLocalhost ? '' : '; Secure';
+  AUTH_COOKIE_NAMES.forEach((name) => {
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax${secure}`;
+  });
+}
 
 function handleLogout(redirections) {
   const shouldRedirect = Object.entries(redirections).some(([currentPath, redirectPath]) => {
@@ -86,27 +106,23 @@ export function renderAuthDropdown(navTools) {
     }
   });
 
-  logoutButtonElement.addEventListener('click', async () => {
-    await authApi.revokeCustomerToken();
-    handleLogout({
-      '/checkout': rootLink('/cart'),
-      '/customer': rootLink('/customer/login'),
-      '/order-details': rootLink('/'),
-    });
-  });
-
-  renderSignIn(authDropinContainer);
-
+  /**
+   * @param {boolean} [isAuthenticated] Explicit auth state from the event bus.
+   *   When omitted, falls back to the auth token cookie.
+   */
   const updateDropDownUI = (isAuthenticated) => {
-    const getUserTokenCookie = getCookie('auth_dropin_user_token');
-    const getUserNameCookie = getCookie('auth_dropin_firstname');
-    const authenticated = Boolean(isAuthenticated || getUserTokenCookie);
+    const tokenCookie = getCookie('auth_dropin_user_token');
+    const firstNameCookie = getCookie('auth_dropin_firstname');
+    // Prefer explicit event payload — `false || cookie` would ignore logout.
+    const authenticated = typeof isAuthenticated === 'boolean'
+      ? isAuthenticated
+      : Boolean(tokenCookie);
 
     dropdownWrapper.classList.toggle('is-authenticated', authenticated);
     authDropDownPanel.classList.toggle('nav-auth-menu-panel--user', authenticated);
 
     if (authenticated) {
-      const firstName = getUserNameCookie || 'there';
+      const firstName = firstNameCookie || 'there';
       authDropDownMenuList.style.display = 'block';
       authDropinContainer.style.display = 'none';
       authDropinContainer.setAttribute('hidden', '');
@@ -125,5 +141,26 @@ export function renderAuthDropdown(navTools) {
     }
   };
 
+  logoutButtonElement.addEventListener('click', async () => {
+    try {
+      await authApi.revokeCustomerToken();
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+    // Drop-in clear can miss SameSite/Secure attrs; force-clear client session.
+    clearAuthCookies();
+    updateDropDownUI(false);
+    await toggleDropDownAuthMenu(false);
+    handleLogout({
+      '/checkout': rootLink('/cart'),
+      '/customer': rootLink('/customer/login'),
+      '/order-details': rootLink('/'),
+    });
+  });
+
+  renderSignIn(authDropinContainer);
+
+  events.on('authenticated', updateDropDownUI, { eager: true });
+  // Ensure guest/auth UI is correct even if no prior authenticated event exists.
   updateDropDownUI();
 }
