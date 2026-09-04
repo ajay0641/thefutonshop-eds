@@ -14,6 +14,7 @@ export const selectors = Object.freeze({
     loaderStatus: '.checkout__loader-status',
     mergedCartBanner: '.checkout__merged-cart-banner',
     heading: '.checkout__heading',
+    headerLogin: '.checkout__header-login',
     serverError: '.checkout__server-error',
     outOfStock: '.checkout__out-of-stock',
     login: '.checkout__login',
@@ -45,25 +46,37 @@ export function createCheckoutFragment() {
     <div class="checkout__wrapper">
       <div class="checkout__loader"></div>
       <div class="checkout__loader-status" role="status" aria-live="polite"></div>
+      <div class="checkout__header-bar">
+        <div class="checkout__header-left">
+          <div class="checkout__heading ${CHECKOUT_BLOCK}"></div>
+          <div class="checkout__subtitle">Please enter your details below to complete your purchase</div>
+        </div>
+        <div class="checkout__header-right">
+          <div class="checkout__header-login"></div>
+        </div>
+      </div>
       <div class="checkout__content">
         <div class="checkout__merged-cart-banner"></div>
+        <div class="checkout__server-error ${CHECKOUT_BLOCK}"></div>
+        <div class="checkout__out-of-stock ${CHECKOUT_BLOCK}"></div>
+        <div class="checkout__login"></div>
         <div class="checkout__main">
-          <div class="checkout__heading ${CHECKOUT_BLOCK}"></div>
-          <div class="checkout__server-error ${CHECKOUT_BLOCK}"></div>
-          <div class="checkout__out-of-stock ${CHECKOUT_BLOCK}"></div>
-          <div class="checkout__login ${CHECKOUT_BLOCK}"></div>
           <div class="checkout__shipping-form ${CHECKOUT_BLOCK}"></div>
           <div class="checkout__bill-to-shipping ${CHECKOUT_BLOCK}"></div>
-          <div class="checkout__delivery ${CHECKOUT_BLOCK}"></div>
-          <div class="checkout__payment-methods ${CHECKOUT_BLOCK}"></div>
           <div class="checkout__billing-form ${CHECKOUT_BLOCK}"></div>
-          <div class="checkout__terms-and-conditions ${CHECKOUT_BLOCK}"></div>
-          <div class="checkout__place-order ${CHECKOUT_BLOCK}"></div>
+          <div class="checkout__delivery ${CHECKOUT_BLOCK}"></div>
         </div>
         <div class="checkout__aside">
-          <div class="checkout__order-summary ${CHECKOUT_BLOCK}"></div>
+          <div class="checkout__payment-methods ${CHECKOUT_BLOCK}"></div>
+          <div class="checkout__order-summary ${CHECKOUT_BLOCK}">
+            <div class="checkout__place-order"></div>
+          </div>
           <div class="checkout__gift-options ${CHECKOUT_BLOCK}"></div>
           <div class="checkout__cart-summary ${CHECKOUT_BLOCK}"></div>
+          <div class="checkout__terms-and-conditions ${CHECKOUT_BLOCK}"></div>
+          <div class="checkout__customer-support">
+            Customer Support : <a href="tel:18004438866">1 (800) 443-8866</a>
+          </div>
         </div>
       </div>
     </div>

@@ -42,6 +42,7 @@ import {
   renderCustomerBillingAddresses,
   renderCustomerShippingAddresses,
   renderGiftOptions,
+  renderHeaderLogin,
   renderLoginForm,
   renderMergedCartBanner,
   renderOrderSummary,
@@ -121,6 +122,7 @@ export default async function decorate(block) {
   const $loaderStatus = getElement(selectors.checkout.loaderStatus);
   const $mergedCartBanner = getElement(selectors.checkout.mergedCartBanner);
   const $heading = getElement(selectors.checkout.heading);
+  const $headerLogin = getElement(selectors.checkout.headerLogin);
   const $serverError = getElement(selectors.checkout.serverError);
   const $outOfStock = getElement(selectors.checkout.outOfStock);
   const $login = getElement(selectors.checkout.login);
@@ -136,6 +138,118 @@ export default async function decorate(block) {
   const $termsAndConditions = getElement(selectors.checkout.termsAndConditions);
 
   block.appendChild(checkoutFragment);
+
+  renderHeaderLogin($headerLogin);
+
+  function positionLoginFormInShippingForm() {
+    if (!$shippingForm || !$login) return;
+    const place = () => {
+      const titleEl = $shippingForm.querySelector(
+        '.account-address-form-wrapper__title, .dropin-header-container__title',
+      );
+      if (titleEl && titleEl.nextSibling !== $login) {
+        titleEl.after($login);
+      }
+    };
+    place();
+    setTimeout(place, 100);
+    setTimeout(place, 500);
+  }
+
+  function positionBillToShippingInShippingForm() {
+    if (!$shippingForm || !$billToShipping) return;
+    const place = () => {
+      if (!$shippingForm.contains($billToShipping)) {
+        $shippingForm.appendChild($billToShipping);
+      }
+    };
+    place();
+    setTimeout(place, 100);
+    setTimeout(place, 500);
+  }
+
+  function positionGiftCardsInPaymentMethods() {
+    if (!$paymentMethods || !$orderSummary) return;
+    const move = () => {
+      const giftCards = $orderSummary.querySelector('.cart-order-summary__gift-cards, .cart-gift-cards');
+      if (giftCards && !$paymentMethods.contains(giftCards)) {
+        $paymentMethods.appendChild(giftCards);
+      }
+    };
+    move();
+    setTimeout(move, 100);
+    setTimeout(move, 500);
+
+    const observer = new MutationObserver(move);
+    observer.observe($orderSummary, { childList: true, subtree: true });
+  }
+
+  positionGiftCardsInPaymentMethods();
+
+  function positionOrderSummaryContent() {
+    if (!$orderSummary || !$cartSummary) return;
+
+    const move = () => {
+      const orderHeading = $orderSummary.querySelector('.cart-order-summary__heading');
+      const orderHeadingText = $orderSummary.querySelector('.cart-order-summary__heading-text');
+      if (orderHeadingText && orderHeadingText.textContent !== 'Order Summary') {
+        orderHeadingText.textContent = 'Order Summary';
+      }
+
+      if (orderHeading && $cartSummary.previousElementSibling !== orderHeading) {
+        orderHeading.after($cartSummary);
+      }
+
+      const cartHeading = $cartSummary?.querySelector('.cart-summary-list__heading-text');
+      if (cartHeading && (cartHeading.innerText.includes('Your Cart') || cartHeading.innerText.includes('Cart'))) {
+        const countMatch = cartHeading.innerText.match(/\((\d+)\)/);
+        const count = countMatch ? countMatch[1] : '';
+        cartHeading.innerText = count ? `${count} ITEMS IN CART` : 'ITEMS IN CART';
+      }
+
+      if ($placeOrder && $orderSummary.lastElementChild !== $placeOrder) {
+        $orderSummary.appendChild($placeOrder);
+      }
+
+      $orderSummary.querySelectorAll('.dropin-cart-item').forEach((item) => {
+        const qtyVal = item.querySelector('.dropin-cart-item__quantity__value, .dropin-cart-item__quantity');
+        if (qtyVal && !qtyVal.dataset.formatted) {
+          const numMatch = qtyVal.innerText.match(/\d+/);
+          const num = numMatch ? numMatch[0] : '1';
+          qtyVal.innerHTML = `Qty: ${num}`;
+          qtyVal.dataset.formatted = 'true';
+        }
+
+        const img = item.querySelector('.dropin-cart-item__image img');
+        if (img) {
+          const srcset = img.getAttribute('srcset');
+          if (srcset && srcset.includes('height=NaN')) {
+            img.removeAttribute('srcset');
+          }
+          if (!img.dataset.errorHandled) {
+            img.dataset.errorHandled = 'true';
+            img.addEventListener('error', () => {
+              img.removeAttribute('srcset');
+              img.src = '/icons/cart.svg';
+            });
+          }
+        }
+      });
+    };
+
+    move();
+    setTimeout(move, 100);
+    setTimeout(move, 500);
+    setTimeout(move, 1500);
+
+    const observer = new MutationObserver(move);
+    observer.observe($orderSummary, { childList: true });
+    if ($cartSummary) {
+      observer.observe($cartSummary, { childList: true });
+    }
+  }
+
+  positionOrderSummaryContent();
 
   const handleValidation = () => validateForms([
     { name: LOGIN_FORM_NAME },
@@ -245,6 +359,9 @@ export default async function decorate(block) {
 
       billingForm = await renderAddressForm($billingForm, billingFormRef, data, 'billing');
     }
+
+    positionLoginFormInShippingForm();
+    positionBillToShippingInShippingForm();
   }
 
   async function displayCustomerAddressForms(data) {
@@ -275,6 +392,9 @@ export default async function decorate(block) {
         data,
       );
     }
+
+    positionLoginFormInShippingForm();
+    positionBillToShippingInShippingForm();
   }
 
   async function handleCheckoutUpdated(data) {
