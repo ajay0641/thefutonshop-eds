@@ -77,8 +77,26 @@ export default async function initializeDropins() {
     }
     document.cookie = `${DROPIN_WEBSITE_COOKIE}=${currentWebsitePath}; path=/`;
 
-    // Set auth headers on authenticated event
-    events.on('authenticated', setAuthHeaders, { eager: true });
+    /**
+     * Keep GraphQL auth headers + cart auth flag in sync with the session.
+     * Do NOT call refreshCart here — cart setEndpoint may not be ready yet
+     * (causes Missing "url"). Cart initializer syncs the owned cart id after mount.
+     * @param {boolean} isAuthenticated
+     */
+    const onAuthenticated = (isAuthenticated) => {
+      setAuthHeaders(isAuthenticated);
+
+      if (isAuthenticated) {
+        localStorage.setItem('DROPIN__CART__CART__AUTHENTICATED', 'true');
+        return;
+      }
+
+      if (!getUserTokenCookie()) {
+        localStorage.removeItem('DROPIN__CART__CART__AUTHENTICATED');
+      }
+    };
+
+    events.on('authenticated', onAuthenticated, { eager: true });
 
     // Cache cart data in session storage
     events.on('cart/data', persistCartDataInSession, { eager: true });
@@ -93,7 +111,7 @@ export default async function initializeDropins() {
     } else {
       localStorage.removeItem('DROPIN__CART__CART__AUTHENTICATED');
     }
-    // set auth headers
+    // set auth headers (cart id sync happens in cart.js after setEndpoint)
     setAuthHeaders(!!token);
 
     // Event Bus Logger
@@ -110,7 +128,8 @@ export default async function initializeDropins() {
 
     await import('./personalization.js');
 
-    import('./cart.js');
+    // Await cart so setEndpoint runs before any page-level cart API use
+    await import('./cart.js');
 
     events.on('aem/lcp', async () => {
       // Recaptcha

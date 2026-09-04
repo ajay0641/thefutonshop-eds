@@ -127,6 +127,10 @@
   border-bottom: 1px solid var(--tfs-mini-border);
 }
 
+.commerce-mini-cart .dropin-cart-item {
+  position: relative;
+}
+
 .commerce-mini-cart .dropin-cart-item__wrapper {
   display: grid;
   grid-template-columns: 80px minmax(0, 1fr) auto;
@@ -138,6 +142,19 @@
   column-gap: 14px;
   row-gap: 8px;
   align-items: start;
+}
+
+/*
+ * ItemRemoveAction mounts outside __wrapper (drop-in structure).
+ * Position beside the qty row — do not move Preact DOM (breaks click after login).
+ */
+.commerce-mini-cart .dropin-cart-item > div:has(> .commerce-mini-cart__item-actions) {
+  position: absolute;
+  right: 0;
+  bottom: 16px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
 }
 
 .commerce-mini-cart .dropin-cart-item__image {
@@ -222,6 +239,7 @@
   align-self: center;
   gap: 10px;
   width: auto;
+  padding-right: 40px;
 }
 
 /* See Details accordion */

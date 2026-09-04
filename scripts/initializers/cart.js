@@ -1,7 +1,11 @@
 import { initializers } from '@dropins/tools/initializer.js';
-import { initialize, setEndpoint } from '@dropins/storefront-cart/api.js';
-import { initializeDropin } from './index.js';
+import {
+  initialize,
+  setEndpoint,
+} from '@dropins/storefront-cart/api.js';
+import { getUserTokenCookie, initializeDropin } from './index.js';
 import { CORE_FETCH_GRAPHQL, fetchPlaceholders } from '../commerce.js';
+import { ensureOwnedCart } from '../cart-sync.js';
 
 await initializeDropin(async () => {
   // Set Fetch GraphQL (Core)
@@ -67,5 +71,14 @@ await initializeDropin(async () => {
   };
 
   // Initialize cart
-  return initializers.mountImmediately(initialize, { langDefinitions });
+  await initializers.mountImmediately(initialize, { langDefinitions });
+
+  // Logged-in: replace stale guest cart cookie with customerCart id
+  if (getUserTokenCookie()) {
+    try {
+      await ensureOwnedCart();
+    } catch (error) {
+      console.error('Failed to sync customer cart on init:', error);
+    }
+  }
 })();

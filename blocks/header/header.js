@@ -468,6 +468,12 @@ export default async function decorate(block) {
 
   // Close panels when clicking outside
   document.addEventListener('click', (e) => {
+    const clickedRemove = e.target.closest?.(
+      '.commerce-mini-cart__remove-btn, [data-testid="cart-item-remove-button"]',
+    );
+    // Keep minicart open while removing an item (login re-render safe).
+    if (clickedRemove) return;
+
     // Check if undo is enabled for mini cart
     const miniCartElement = document.querySelector(
       '[data-block-name="commerce-mini-cart"]',
