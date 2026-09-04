@@ -755,7 +755,7 @@ export default async function decorate(block) {
     _giftCardOptions,
     _description,
   ] = await Promise.all([
-    // Gallery (Mobile)
+    // Gallery (Mobile) — tap-to-zoom with pan
     pdpRendered.render(ProductGallery, {
       controls: 'dots',
       arrows: true,
@@ -763,6 +763,7 @@ export default async function decorate(block) {
       gap: 'small',
       loop: false,
       videos: true, // Display videos if available
+      zoom: { closeButton: true },
       imageParams: {
         ...IMAGES_SIZES,
       },
@@ -770,7 +771,7 @@ export default async function decorate(block) {
       slots: gallerySlots,
     })($galleryMobile),
 
-    // Gallery (Desktop) — main image with thumbnail row below (TFS reference)
+    // Gallery (Desktop) — main image + thumbnails + click-to-zoom magnifier
     pdpRendered.render(ProductGallery, {
       controls: 'thumbnailsRow',
       arrows: true,
@@ -778,6 +779,7 @@ export default async function decorate(block) {
       gap: 'small',
       loop: false,
       videos: true,
+      zoom: { closeButton: true },
       imageParams: {
         ...IMAGES_SIZES,
       },
