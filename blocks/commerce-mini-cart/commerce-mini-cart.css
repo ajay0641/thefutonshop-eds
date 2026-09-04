@@ -131,6 +131,12 @@
   position: relative;
 }
 
+.commerce-mini-cart .dropin-cart-item [data-slot="ItemRemoveAction"] {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+}
+
 .commerce-mini-cart .dropin-cart-item__wrapper {
   display: grid;
   grid-template-columns: 80px minmax(0, 1fr) auto;
@@ -377,6 +383,10 @@
 .commerce-mini-cart .cart-item-edit-link .dropin-button {
   font-size: 0;
   gap: 0;
+}
+
+.commerce-mini-cart .cart-item-edit-link {
+  display: none;
 }
 
 .commerce-mini-cart .commerce-mini-cart__remove-btn svg,

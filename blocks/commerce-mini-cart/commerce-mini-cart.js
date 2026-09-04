@@ -31,7 +31,6 @@ function decorateSeeDetails(root) {
 
     const details = document.createElement('details');
     details.className = 'commerce-mini-cart__details';
-    details.open = true;
 
     const summary = document.createElement('summary');
     summary.className = 'commerce-mini-cart__details-summary';

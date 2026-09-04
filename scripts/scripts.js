@@ -164,6 +164,28 @@ function deferNonCriticalPlpBlocks(main) {
 }
 
 /**
+ * Injects a product-reviews block right after product-details-wrapper or product-details block.
+ * @param {Element} main
+ */
+function buildProductReviewsBlock(main) {
+  if (main.querySelector('.product-reviews')) return;
+
+  const detailsBlock = main.querySelector('.product-details');
+  if (!detailsBlock) return;
+
+  const targetWrapper = detailsBlock.closest('.product-details-wrapper') || detailsBlock.parentElement;
+  if (!targetWrapper) return;
+
+  const reviewsWrapper = document.createElement('div');
+  reviewsWrapper.className = 'product-reviews-wrapper';
+  const reviewsBlock = document.createElement('div');
+  reviewsBlock.className = 'product-reviews block';
+  reviewsWrapper.appendChild(reviewsBlock);
+
+  targetWrapper.after(reviewsWrapper);
+}
+
+/**
  * Builds all synthetic blocks in a container element.
  * @param {Element} main The container element
  */
@@ -188,6 +210,7 @@ function buildAutoBlocks(main) {
     }
     buildWidgetAutoBlocks(main);
     buildBreadcrumbBlock(main);
+    buildProductReviewsBlock(main);
   } catch (error) {
     console.error('Auto Blocking failed', error);
   }
