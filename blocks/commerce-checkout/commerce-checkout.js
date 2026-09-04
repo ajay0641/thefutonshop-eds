@@ -98,14 +98,22 @@ function redirectToCartIfEmpty(cartData) {
 
 /**
  * Wait until cart/initialized has fired (including a cached eager payload).
+ * Eager callbacks can run synchronously inside events.on(), so do not close over
+ * a const subscription before it is assigned (TDZ crash on live/CDN timing).
  * @returns {Promise<import('@dropins/storefront-cart/data/models').CartModel|null>}
  */
 function waitForCartInitialized() {
   return new Promise((resolve) => {
-    const subscription = events.on('cart/initialized', (data) => {
-      subscription.off();
+    let resolved = false;
+    let subscription;
+    const onInitialized = (data) => {
+      if (resolved) return;
+      resolved = true;
+      subscription?.off();
       resolve(data ?? null);
-    }, { eager: true });
+    };
+    subscription = events.on('cart/initialized', onInitialized, { eager: true });
+    if (resolved) subscription.off();
   });
 }
 
