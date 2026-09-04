@@ -119,6 +119,7 @@ function updateTabVisibilities(block, product, hasFaqs) {
     { key: 'details', hasData: hasDetails },
     { key: 'overview', hasData: hasOverview },
     { key: 'faq', hasData: isFaqLoaded },
+    { key: 'reviews', hasData: true },
   ];
 
   let activeTabSet = false;
@@ -219,6 +220,63 @@ function setupFaqTabIntegration(block, onFaqMoved) {
   setTimeout(() => {
     observer.disconnect();
     onFaqMoved(moveFaqIntoTab(block));
+  }, 2000);
+}
+
+function moveReviewsIntoTab(block) {
+  if (!block) return false;
+  const reviewsTabPanel = block.querySelector('#product-details-tab-reviews');
+  if (!reviewsTabPanel) return false;
+
+  const main = block.closest('main') || document.querySelector('main');
+  if (!main) return false;
+
+  const reviewsElement = main.querySelector('.product-reviews-wrapper, .product-reviews, [data-block-name="product-reviews"]');
+  if (!reviewsElement) return false;
+
+  if (reviewsTabPanel.contains(reviewsElement)) return true;
+
+  const parentSection = reviewsElement.closest('.section');
+  const targetContainer = reviewsTabPanel.querySelector('.product-details__reviews-list') || reviewsTabPanel;
+  targetContainer.replaceChildren(reviewsElement);
+
+  if (parentSection && parentSection !== reviewsTabPanel.closest('.section')) {
+    const hasRemainingContent = [...parentSection.children].some(
+      (child) => child.textContent.trim() !== '' && !child.classList.contains('section-metadata'),
+    );
+    if (!hasRemainingContent) {
+      parentSection.style.display = 'none';
+    }
+  }
+
+  return true;
+}
+
+function setupReviewsTabIntegration(block, onReviewsMoved) {
+  const moved = moveReviewsIntoTab(block);
+  if (moved) {
+    onReviewsMoved(true);
+    return;
+  }
+
+  const main = block.closest('main') || document.querySelector('main');
+  if (!main) {
+    onReviewsMoved(false);
+    return;
+  }
+
+  const observer = new MutationObserver(() => {
+    if (moveReviewsIntoTab(block)) {
+      onReviewsMoved(true);
+      observer.disconnect();
+    }
+  });
+
+  observer.observe(main, { childList: true, subtree: true });
+
+  setTimeout(() => {
+    observer.disconnect();
+    onReviewsMoved(moveReviewsIntoTab(block));
   }, 2000);
 }
 
@@ -616,6 +674,9 @@ export default async function decorate(block) {
         <button type="button" role="tab" id="product-details-tab-btn-faq"
           aria-controls="product-details-tab-faq" aria-selected="false"
           class="product-details__tab" data-tab="faq">FAQ</button>
+        <button type="button" role="tab" id="product-details-tab-btn-reviews"
+          aria-controls="product-details-tab-reviews" aria-selected="false"
+          class="product-details__tab" data-tab="reviews">Reviews</button>
       </div>
       <div class="product-details__tab-panels">
         <div id="product-details-tab-details" role="tabpanel"
@@ -632,6 +693,11 @@ export default async function decorate(block) {
           class="product-details__tab-panel" data-tab="faq"
           aria-labelledby="product-details-tab-btn-faq" hidden>
           <div class="product-details__faq-list"></div>
+        </div>
+        <div id="product-details-tab-reviews" role="tabpanel"
+          class="product-details__tab-panel" data-tab="reviews"
+          aria-labelledby="product-details-tab-btn-reviews" hidden>
+          <div class="product-details__reviews-list"></div>
         </div>
       </div>
     </div>
@@ -755,6 +821,10 @@ export default async function decorate(block) {
   let hasFaqsLoaded = false;
   setupFaqTabIntegration(block, (hasFaqs) => {
     hasFaqsLoaded = hasFaqs;
+    updateTabVisibilities(block, product || events.lastPayload('pdp/data'), hasFaqsLoaded);
+  });
+
+  setupReviewsTabIntegration(block, () => {
     updateTabVisibilities(block, product || events.lastPayload('pdp/data'), hasFaqsLoaded);
   });
 
