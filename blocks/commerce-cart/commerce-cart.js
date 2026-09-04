@@ -31,11 +31,15 @@ import '../../scripts/initializers/wishlist.js';
 
 import { readBlockConfig } from '../../scripts/aem.js';
 import { fetchPlaceholders, rootLink, getProductLink } from '../../scripts/commerce.js';
+import { getCartItemImageSlotConfig } from '../../scripts/product-image.js';
+import {
+  ensureOwnedCart,
+  removeOwnedCartLineItem,
+} from '../../scripts/cart-sync.js';
 
 /**
  * Adds edit + remove controls for cart table rows (TFS cart).
- * Uses updateProductsFromCart directly so remove keeps working after re-renders
- * (unlike moving Preact-managed DOM nodes).
+ * Uses Preact Button onClick and owned-cart sync before remove.
  * @param {object} ctx CartSummaryTable Actions slot context
  * @param {Function} onEdit
  * @param {object} placeholders
@@ -45,7 +49,6 @@ import { fetchPlaceholders, rootLink, getProductLink } from '../../scripts/comme
 function renderCartItemActions(ctx, onEdit, placeholders, enableUpdatingProduct, allowRemove) {
   const {
     item,
-    itemsUpdating,
     setItemUpdating,
     setItemUpdateError,
   } = ctx;
@@ -74,47 +77,32 @@ function renderCartItemActions(ctx, onEdit, placeholders, enableUpdatingProduct,
   }
 
   if (allowRemove) {
-    const removeBtn = document.createElement('button');
-    removeBtn.type = 'button';
-    removeBtn.className = 'cart-cart-summary-table__item-remove-button';
-    removeBtn.setAttribute('aria-label', `Remove ${item.name} from the cart`);
-    removeBtn.setAttribute('data-testid', `cart-table-item-remove-${item.uid}`);
-    /* Outline trash — matches `/icons/trash.svg` (feather trash-2). */
-    removeBtn.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-        <polyline points="3 6 5 6 21 6"></polyline>
-        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-        <line x1="10" y1="11" x2="10" y2="17"></line>
-        <line x1="14" y1="11" x2="14" y2="17"></line>
-      </svg>
-    `;
+    const removeWrap = document.createElement('div');
+    removeWrap.className = 'cart-cart-summary-table__item-remove';
 
-    const syncDisabled = () => {
-      removeBtn.disabled = Boolean(itemsUpdating?.get?.(item.uid)?.isUpdating);
-    };
-    syncDisabled();
+    UI.render(Button, {
+      variant: 'tertiary',
+      size: 'medium',
+      className: 'cart-cart-summary-table__item-remove-button',
+      'aria-label': `Remove ${item.name} from the cart`,
+      'data-testid': `cart-table-item-remove-${item.uid}`,
+      icon: h(Icon, { source: 'Trash' }),
+      onClick: async () => {
+        const { uid } = item;
+        try {
+          setItemUpdating?.(uid, true);
+          await removeOwnedCartLineItem(item);
+        } catch (error) {
+          console.error('Failed to remove cart item:', error);
+          setItemUpdateError?.(uid, error?.message || 'Unable to remove item');
+          // ensureOwnedCart already re-emitted server cart on failure
+        } finally {
+          setItemUpdating?.(uid, false);
+        }
+      },
+    })(removeWrap);
 
-    removeBtn.addEventListener('click', async (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (removeBtn.disabled) return;
-
-      try {
-        setItemUpdating?.(item.uid, true);
-        await Cart.updateProductsFromCart([{ uid: item.uid, quantity: 0 }]);
-      } catch (error) {
-        console.error('Failed to remove cart item:', error);
-        setItemUpdateError?.(item.uid, error?.message || 'Unable to remove item');
-      } finally {
-        setItemUpdating?.(item.uid, false);
-      }
-    });
-
-    actions.append(removeBtn);
-
-    ctx.onChange?.((next) => {
-      removeBtn.disabled = Boolean(next.itemsUpdating?.get?.(next.item.uid)?.isUpdating);
-    });
+    actions.append(removeWrap);
   }
 
   ctx.replaceWith(actions);
@@ -138,6 +126,13 @@ export default async function decorate(block) {
   } = readBlockConfig(block);
 
   const placeholders = await fetchPlaceholders();
+
+  // Sync owned cart id before rendering (avoids guest cookie + Bearer mismatch).
+  try {
+    await ensureOwnedCart();
+  } catch (error) {
+    console.error('Failed to sync cart before render:', error);
+  }
 
   let currentModal = null;
   let currentNotification = null;
@@ -279,15 +274,12 @@ export default async function decorate(block) {
           const { item, defaultImageProps } = ctx;
           const anchorWrapper = document.createElement('a');
           anchorWrapper.href = createProductLink(item);
+          anchorWrapper.className = 'cart-cart-summary-table__item-image-wrapper';
+          anchorWrapper.setAttribute('aria-label', item?.name || item?.sku || 'Product');
 
           tryRenderAemAssetsImage(ctx, {
-            alias: item.sku,
-            imageProps: defaultImageProps,
+            ...getCartItemImageSlotConfig(defaultImageProps, item),
             wrapper: anchorWrapper,
-            params: {
-              width: defaultImageProps.width,
-              height: defaultImageProps.height,
-            },
           });
         },
 

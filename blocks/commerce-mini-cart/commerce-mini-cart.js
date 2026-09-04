@@ -1,6 +1,5 @@
 import { render as provider } from '@dropins/storefront-cart/render.js';
 import MiniCart from '@dropins/storefront-cart/containers/MiniCart.js';
-import { updateProductsFromCart } from '@dropins/storefront-cart/api.js';
 import { events } from '@dropins/tools/event-bus.js';
 import { tryRenderAemAssetsImage } from '@dropins/tools/lib/aem/assets.js';
 import {
@@ -19,6 +18,8 @@ import '../../scripts/initializers/cart.js';
 
 import { readBlockConfig } from '../../scripts/aem.js';
 import { fetchPlaceholders, rootLink, getProductLink } from '../../scripts/commerce.js';
+import { getCartItemImageSlotConfig } from '../../scripts/product-image.js';
+import { removeOwnedCartLineItem } from '../../scripts/cart-sync.js';
 
 /**
  * Wraps option rows in a "See Details" accordion (TFS reference).
@@ -39,18 +40,6 @@ function decorateSeeDetails(root) {
     list.parentNode.insertBefore(details, list);
     details.append(summary, list);
   });
-}
-
-/**
- * ItemRemoveAction renders outside `.dropin-cart-item__wrapper`. Move our
- * edit/remove controls into the quantity row so they align with the steppers.
- * @param {HTMLElement} actions
- */
-function placeItemActionsBesideQuantity(actions) {
-  const cartItem = actions.closest('.dropin-cart-item');
-  const quantity = cartItem?.querySelector('.dropin-cart-item__quantity');
-  if (!quantity || quantity.contains(actions)) return;
-  quantity.append(actions);
 }
 
 const REMOVE_ICON_SVG = `
@@ -266,16 +255,12 @@ export default async function decorate(block) {
         const { item, defaultImageProps } = ctx;
         const anchorWrapper = document.createElement('a');
         anchorWrapper.href = createProductLink(item);
+        anchorWrapper.className = 'dropin-cart-item__image';
+        anchorWrapper.setAttribute('aria-label', item?.name || item?.sku || 'Product');
 
         tryRenderAemAssetsImage(ctx, {
-          alias: item.sku,
-          imageProps: defaultImageProps,
+          ...getCartItemImageSlotConfig(defaultImageProps, item),
           wrapper: anchorWrapper,
-
-          params: {
-            width: defaultImageProps.width,
-            height: defaultImageProps.height,
-          },
         });
       },
 
@@ -315,10 +300,12 @@ export default async function decorate(block) {
           removeBtn.className = 'commerce-mini-cart__remove-btn';
           removeBtn.setAttribute('aria-label', `Remove ${item.name} from the cart`);
           removeBtn.setAttribute('data-testid', 'cart-item-remove-button');
+          removeBtn.dataset.uid = item.uid;
           removeBtn.innerHTML = REMOVE_ICON_SVG;
+          let lineItem = item;
 
           const syncDisabled = () => {
-            removeBtn.disabled = Boolean(itemsLoading?.has?.(item.uid));
+            removeBtn.disabled = Boolean(itemsLoading?.has?.(lineItem.uid));
           };
           syncDisabled();
 
@@ -327,29 +314,28 @@ export default async function decorate(block) {
             event.stopPropagation();
             if (removeBtn.disabled) return;
 
+            const { uid } = lineItem;
             try {
-              handleItemsLoading?.(item.uid, true);
-              // Drop-in's handleItemQuantityUpdate(item, 0) is a no-op unless a
-              // third "force" flag is passed; call the cart API directly.
-              await updateProductsFromCart([{ uid: item.uid, quantity: 0 }]);
+              handleItemsLoading?.(uid, true);
+              await removeOwnedCartLineItem(lineItem);
             } catch (error) {
               console.error('Failed to remove mini-cart item:', error);
-              handleItemsError?.(item.uid, error?.message || 'Unable to remove item');
+              handleItemsError?.(uid, error?.message || 'Unable to remove item');
             } finally {
-              handleItemsLoading?.(item.uid, false);
+              handleItemsLoading?.(uid, false);
             }
           });
 
           actions.append(removeBtn);
 
           ctx.onChange?.((next) => {
+            lineItem = next.item;
+            removeBtn.dataset.uid = next.item.uid;
             removeBtn.disabled = Boolean(next.itemsLoading?.has?.(next.item.uid));
           });
         }
 
         ctx.replaceWith(actions);
-        // Slot mounts outside the item grid — align beside quantity steppers.
-        requestAnimationFrame(() => placeItemActionsBesideQuantity(actions));
       },
     },
   })(block);
@@ -367,7 +353,6 @@ export default async function decorate(block) {
 
   const decorateItems = () => {
     decorateSeeDetails(block);
-    block.querySelectorAll('.commerce-mini-cart__item-actions').forEach(placeItemActionsBesideQuantity);
   };
 
   decorateItems();

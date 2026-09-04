@@ -68,6 +68,7 @@ import {
   fetchPlaceholders,
   rootLink,
 } from '../../scripts/commerce.js';
+import { getCartItemImageSlotConfig } from '../../scripts/product-image.js';
 
 // Constants
 import {
@@ -701,15 +702,7 @@ export const renderCartSummaryList = async (container) => renderContainer(
         },
         Thumbnail: (ctx) => {
           const { item, defaultImageProps } = ctx;
-          tryRenderAemAssetsImage(ctx, {
-            alias: item.sku,
-            imageProps: defaultImageProps,
-
-            params: {
-              width: defaultImageProps.width,
-              height: defaultImageProps.height,
-            },
-          });
+          tryRenderAemAssetsImage(ctx, getCartItemImageSlotConfig(defaultImageProps, item));
         },
         Footer: renderCartGiftOptions,
       },

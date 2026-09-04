@@ -114,6 +114,7 @@
 
 .commerce-cart .cart-cart-summary-table__item-image-wrapper,
 .commerce-cart .cart-cart-summary-table__item-image-wrapper img {
+  display: block;
   width: 70px;
   height: 70px;
   object-fit: contain;
@@ -301,7 +302,8 @@
   margin: 0;
 }
 
-/* Row actions — outlined edit/remove */
+/* Row actions — edit (appended) + drop-in remove (Preact-managed) */
+.commerce-cart [data-slot='Actions'],
 .commerce-cart .cart-cart-summary-table__item-actions {
   display: inline-flex;
   align-items: center;
@@ -309,7 +311,8 @@
 }
 
 .commerce-cart .cart-item-edit-link .dropin-button,
-.commerce-cart .cart-cart-summary-table__item-remove-button {
+.commerce-cart .cart-cart-summary-table__item-remove-button,
+.commerce-cart .cart-cart-summary-table__item-remove-button.dropin-iconButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -328,6 +331,7 @@
   pointer-events: auto;
 }
 
+/* Keep drop-in remove clickable; only resize its icon */
 .commerce-cart .cart-cart-summary-table__item-remove-button svg,
 .commerce-cart .cart-item-edit-link .dropin-button svg {
   display: block;
