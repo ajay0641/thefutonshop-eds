@@ -25,14 +25,34 @@ export function setTfsCardActionLoading(button, loading) {
 }
 
 /**
- * @param {{ isPriceRange?: boolean, addToCartAllowed?: boolean, typename?: string }} product
+ * Whether the shopper must open the PDP to configure the product before cart/wishlist.
+ * PLP search products often omit `addToCartAllowed` (drop-in maps missing → false), so
+ * do not treat that alone as "needs PDP". Prefer GraphQL `__typename`.
+ * @param {{ isPriceRange?: boolean, addToCartAllowed?: boolean, typename?: string, options?: unknown[], attributes?: Array<{ name?: string }> }} product
  * @returns {boolean}
  */
 export function requiresTfsPdpConfiguration(product) {
-  return product.typename === 'ComplexProductView'
-    || product.isPriceRange === true
-    || product.addToCartAllowed === false
-    || product.attributes?.some((attr) => attr.name === 'ac_giftcard');
+  if (!product) return true;
+
+  if (product.attributes?.some((attr) => attr.name === 'ac_giftcard')) {
+    return true;
+  }
+
+  // Catalog Service / Live Search product views
+  if (product.typename === 'ComplexProductView') {
+    return true;
+  }
+  if (product.typename === 'SimpleProductView') {
+    return false;
+  }
+
+  // Configurable options without a Complex typename (some custom queries)
+  if (Array.isArray(product.options) && product.options.length > 0) {
+    return true;
+  }
+
+  // Slider / other models that include these fields explicitly
+  return product.isPriceRange === true || product.addToCartAllowed === false;
 }
 
 /**

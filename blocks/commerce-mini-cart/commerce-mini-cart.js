@@ -1,5 +1,6 @@
 import { render as provider } from '@dropins/storefront-cart/render.js';
 import MiniCart from '@dropins/storefront-cart/containers/MiniCart.js';
+import { updateProductsFromCart } from '@dropins/storefront-cart/api.js';
 import { events } from '@dropins/tools/event-bus.js';
 import { tryRenderAemAssetsImage } from '@dropins/tools/lib/aem/assets.js';
 import {
@@ -41,28 +42,25 @@ function decorateSeeDetails(root) {
 }
 
 /**
- * Places qty, edit, and remove in one action row (TFS reference).
- * @param {Element} root
+ * ItemRemoveAction renders outside `.dropin-cart-item__wrapper`. Move our
+ * edit/remove controls into the quantity row so they align with the steppers.
+ * @param {HTMLElement} actions
  */
-function decorateItemActions(root) {
-  root.querySelectorAll('.dropin-cart-item').forEach((item) => {
-    const qty = item.querySelector('.dropin-cart-item__quantity');
-    if (!qty || qty.querySelector('.commerce-mini-cart__item-actions')) return;
-
-    const actions = document.createElement('div');
-    actions.className = 'commerce-mini-cart__item-actions';
-
-    const edit = item.querySelector('.cart-item-edit-link');
-    const remove = item.querySelector('.dropin-cart-item__remove')
-      || item.querySelector('[class*="dropin-cart-item__remove"]')
-      || item.querySelector('button.dropin-iconButton');
-
-    if (edit) actions.append(edit);
-    if (remove) actions.append(remove);
-
-    qty.append(actions);
-  });
+function placeItemActionsBesideQuantity(actions) {
+  const cartItem = actions.closest('.dropin-cart-item');
+  const quantity = cartItem?.querySelector('.dropin-cart-item__quantity');
+  if (!quantity || quantity.contains(actions)) return;
+  quantity.append(actions);
 }
+
+const REMOVE_ICON_SVG = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+    <polyline points="3 6 5 6 21 6"></polyline>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+    <line x1="10" y1="11" x2="10" y2="17"></line>
+    <line x1="14" y1="11" x2="14" y2="17"></line>
+  </svg>
+`;
 
 /**
  * Builds the TFS-style drawer header: count + View Cart + close.
@@ -282,24 +280,76 @@ export default async function decorate(block) {
       },
 
       ItemRemoveAction: (ctx) => {
-        const { item } = ctx;
-        if (item?.itemType !== 'ConfigurableCartItem' || enableUpdatingProduct !== 'true') {
-          return;
+        const {
+          item,
+          enableRemoveItem,
+          handleItemsLoading,
+          handleItemsError,
+          itemsLoading,
+        } = ctx;
+
+        // Build edit + remove in-slot (do not move Preact DOM nodes — that
+        // breaks click handlers after cart re-renders).
+        const actions = document.createElement('div');
+        actions.className = 'commerce-mini-cart__item-actions';
+
+        if (item?.itemType === 'ConfigurableCartItem' && enableUpdatingProduct === 'true') {
+          const editLink = document.createElement('div');
+          editLink.className = 'cart-item-edit-link';
+
+          UI.render(Button, {
+            children: placeholders?.Global?.CartEditButton || 'Edit',
+            'aria-label': `${placeholders?.Global?.CartEditButton || 'Edit'} ${item.name}`,
+            variant: 'tertiary',
+            size: 'medium',
+            icon: h(Icon, { source: 'Edit' }),
+            onClick: () => handleEditButtonClick(item),
+          })(editLink);
+
+          actions.append(editLink);
         }
 
-        const editLink = document.createElement('div');
-        editLink.className = 'cart-item-edit-link';
+        if (enableRemoveItem !== false) {
+          const removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.className = 'commerce-mini-cart__remove-btn';
+          removeBtn.setAttribute('aria-label', `Remove ${item.name} from the cart`);
+          removeBtn.setAttribute('data-testid', 'cart-item-remove-button');
+          removeBtn.innerHTML = REMOVE_ICON_SVG;
 
-        UI.render(Button, {
-          children: placeholders?.Global?.CartEditButton || 'Edit',
-          'aria-label': `${placeholders?.Global?.CartEditButton || 'Edit'} ${item.name}`,
-          variant: 'tertiary',
-          size: 'medium',
-          icon: h(Icon, { source: 'Edit' }),
-          onClick: () => handleEditButtonClick(item),
-        })(editLink);
+          const syncDisabled = () => {
+            removeBtn.disabled = Boolean(itemsLoading?.has?.(item.uid));
+          };
+          syncDisabled();
 
-        ctx.prependSibling(editLink);
+          removeBtn.addEventListener('click', async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (removeBtn.disabled) return;
+
+            try {
+              handleItemsLoading?.(item.uid, true);
+              // Drop-in's handleItemQuantityUpdate(item, 0) is a no-op unless a
+              // third "force" flag is passed; call the cart API directly.
+              await updateProductsFromCart([{ uid: item.uid, quantity: 0 }]);
+            } catch (error) {
+              console.error('Failed to remove mini-cart item:', error);
+              handleItemsError?.(item.uid, error?.message || 'Unable to remove item');
+            } finally {
+              handleItemsLoading?.(item.uid, false);
+            }
+          });
+
+          actions.append(removeBtn);
+
+          ctx.onChange?.((next) => {
+            removeBtn.disabled = Boolean(next.itemsLoading?.has?.(next.item.uid));
+          });
+        }
+
+        ctx.replaceWith(actions);
+        // Slot mounts outside the item grid — align beside quantity steppers.
+        requestAnimationFrame(() => placeItemActionsBesideQuantity(actions));
       },
     },
   })(block);
@@ -317,7 +367,7 @@ export default async function decorate(block) {
 
   const decorateItems = () => {
     decorateSeeDetails(block);
-    decorateItemActions(block);
+    block.querySelectorAll('.commerce-mini-cart__item-actions').forEach(placeItemActionsBesideQuantity);
   };
 
   decorateItems();

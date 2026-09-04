@@ -365,7 +365,7 @@ export default async function decorate(block) {
   async function initSearch() {
     if (searchInitialized) return;
     searchInitialized = true;
-    const pageSize = 4;
+    const pageSize = 6;
 
     await import('../../scripts/initializers/search.js');
 
@@ -386,6 +386,8 @@ export default async function decorate(block) {
     render.render(SearchResults, {
       skeletonCount: pageSize,
       scope: 'popover',
+      imageWidth: 96,
+      imageHeight: 96,
       routeProduct: ({ urlKey, sku }) => getProductLink(urlKey, sku),
       onSearchResult: (results) => {
         searchResult.style.display = results.length > 0 ? 'block' : 'none';
@@ -399,20 +401,25 @@ export default async function decorate(block) {
 
           tryRenderAemAssetsImage(ctx, {
             alias: product.sku,
-            imageProps,
+            imageProps: {
+              ...imageProps,
+              width: 96,
+              height: 96,
+            },
             wrapper: anchorWrapper,
             params: {
-              width: defaultImageProps.width,
-              height: defaultImageProps.height,
+              width: 96,
+              height: 96,
             },
           });
         },
         Footer: async (ctx) => {
           // View all results button
           const viewAllResultsWrapper = document.createElement('div');
+          viewAllResultsWrapper.className = 'search-bar-result__view-all';
 
           const viewAllResultsButton = await UI.render(Button, {
-            children: labels.Global?.SearchViewAll,
+            children: labels.Global?.SearchViewAll || 'View all',
             variant: 'secondary',
             href: rootLink('/search'),
           })(viewAllResultsWrapper);

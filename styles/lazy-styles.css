@@ -1,2 +1,2 @@
 /* add global styles that can be loaded post LCP here */
-@import url('./product-card.css');
+/* product-card.css is loaded eagerly by product-list-page (card actions). */

@@ -83,6 +83,54 @@ import {
 } from './constants.js';
 
 /**
+ * Safely estimates shipping cost with fallback country code to prevent GraphQL errors
+ */
+const safeEstimateShippingCost = (estimator, values, fallbackCountry = 'US') => {
+  if (!estimator || !values) return;
+  const rawData = values.data ? values.data : values;
+  const isDataValid = typeof values.isDataValid === 'boolean' ? values.isDataValid : false;
+  const countryCode = rawData?.countryCode || rawData?.country_code || rawData?.countryId || fallbackCountry || 'US';
+
+  const payload = {
+    data: {
+      ...rawData,
+      countryCode,
+    },
+    isDataValid,
+  };
+
+  try {
+    estimator(payload);
+  } catch (err) {
+    console.error('Failed to estimate shipping cost:', err);
+  }
+};
+
+/**
+ * Safely sets address on cart with fallback country code
+ */
+const safeSetAddressOnCart = (setter, values, fallbackCountry = 'US') => {
+  if (!setter || !values) return;
+  const rawData = values.data ? values.data : values;
+  const isDataValid = typeof values.isDataValid === 'boolean' ? values.isDataValid : true;
+  const countryCode = rawData?.countryCode || rawData?.country_code || rawData?.countryId || fallbackCountry || 'US';
+
+  const payload = {
+    data: {
+      ...rawData,
+      countryCode,
+    },
+    isDataValid,
+  };
+
+  try {
+    setter(payload);
+  } catch (err) {
+    console.error('Failed to set address on cart:', err);
+  }
+};
+
+/**
  * Container IDs for registry management
  * @enum {string}
  */
@@ -247,6 +295,8 @@ export const renderLoginForm = async (container) => renderContainer(
   CONTAINERS.LOGIN_FORM,
   async () => CheckoutProvider.render(LoginForm, {
     name: LOGIN_FORM_NAME,
+    displayTitle: false,
+    displayHeadingContent: false,
     onSignInClick: async (initialEmailValue) => {
       const signInForm = document.createElement('div');
 
@@ -271,6 +321,64 @@ export const renderLoginForm = async (container) => renderContainer(
     },
   })(container),
 );
+
+/**
+ * Renders header login link in right container of header bar
+ * @param {HTMLElement} container - DOM element to render header login in
+ */
+export const renderHeaderLogin = (container) => {
+  if (!container) return;
+
+  const openSignInModal = async () => {
+    const signInForm = document.createElement('div');
+
+    AuthProvider.render(AuthCombine, {
+      signInFormConfig: {
+        renderSignUpLink: true,
+      },
+      signUpFormConfig: {
+        slots: {
+          ...authPrivacyPolicyConsentSlot,
+        },
+      },
+      resetPasswordFormConfig: {},
+    })(signInForm);
+
+    await showModal(signInForm);
+  };
+
+  const updateHeader = (authenticated) => {
+    container.innerHTML = '';
+    if (authenticated) {
+      const logoutLink = document.createElement('a');
+      logoutLink.className = 'checkout__header-logout-link';
+      logoutLink.href = '#';
+      logoutLink.textContent = 'Sign out';
+      logoutLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        authApi.revokeCustomerToken();
+      });
+      container.appendChild(logoutLink);
+    } else {
+      const loginLink = document.createElement('a');
+      loginLink.className = 'checkout__header-login-link';
+      loginLink.href = '#';
+      loginLink.textContent = 'Log in';
+      loginLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        openSignInModal();
+      });
+      container.appendChild(loginLink);
+    }
+  };
+
+  events.on('authenticated', (authenticated) => {
+    updateHeader(authenticated);
+  }, { eager: true });
+
+  const isAuth = events.lastPayload('authenticated') ?? false;
+  updateHeader(isAuth);
+};
 
 /**
  * Renders the shipping address form skeleton (initial placeholder)
@@ -327,10 +435,49 @@ export const renderBillToShippingAddress = async (container) => renderContainer(
  * @param {HTMLElement} container - DOM element to render shipping methods in
  * @returns {Promise<Object>} - The rendered shipping methods component
  */
-export const renderShippingMethods = async (container) => renderContainer(
-  CONTAINERS.SHIPPING_METHODS,
-  async () => CheckoutProvider.render(ShippingMethods)(container),
-);
+export const renderShippingMethods = async (container) => {
+  const result = await renderContainer(
+    CONTAINERS.SHIPPING_METHODS,
+    async () => CheckoutProvider.render(ShippingMethods)(container),
+  );
+
+  // Trigger initial shipping estimation to replace loading skeletons if no estimation has occurred yet
+  try {
+    const storeConfig = checkoutApi.getStoreConfigCache();
+    const estimator = estimateShippingCost({ debounceMs: 0 });
+    safeEstimateShippingCost(estimator, { countryCode: storeConfig?.defaultCountry || 'US' }, storeConfig?.defaultCountry || 'US');
+  } catch (err) {
+    // Ignore error if initial estimation fails
+  }
+
+  const updateHeading = () => {
+    const heading = container.querySelector('.checkout-shipping-methods__title h3');
+    if (heading && heading.textContent !== 'Shipping Method') {
+      heading.textContent = 'Shipping Method';
+    }
+  };
+
+  const renderDisclaimer = () => {
+    let disclaimer = container.querySelector('.checkout-shipping-methods__disclaimer');
+    if (!disclaimer) {
+      disclaimer = document.createElement('div');
+      disclaimer.className = 'checkout-shipping-methods__disclaimer';
+      disclaimer.textContent = 'Local delivery and set up available within 30 miles of any showroom for $70.00 and up. Call 1-800-443-8866 to order.';
+      container.appendChild(disclaimer);
+    }
+  };
+
+  const sync = () => {
+    updateHeading();
+    renderDisclaimer();
+  };
+
+  sync();
+  const observer = new MutationObserver(sync);
+  observer.observe(container, { childList: true, subtree: true });
+
+  return result;
+};
 
 /**
  * Renders payment methods with credit card integration - original regular checkout functionality
@@ -338,65 +485,96 @@ export const renderShippingMethods = async (container) => renderContainer(
  * @param {Object} creditCardFormRef - React-style ref for credit card form
  * @returns {Promise<Object>} - The rendered payment methods component
  */
-export const renderPaymentMethods = async (container, creditCardFormRef) => renderContainer(
-  CONTAINERS.PAYMENT_METHODS,
-  async () => CheckoutProvider.render(PaymentMethods, {
-    slots: {
-      Methods: {
-        [PaymentMethodCode.CREDIT_CARD]: {
-          render: (ctx) => {
-            const $creditCard = document.createElement('div');
+export const renderPaymentMethods = async (container, creditCardFormRef) => {
+  const result = await renderContainer(
+    CONTAINERS.PAYMENT_METHODS,
+    async () => CheckoutProvider.render(PaymentMethods, {
+      slots: {
+        Methods: {
+          [PaymentMethodCode.CREDIT_CARD]: {
+            render: (ctx) => {
+              const $creditCard = document.createElement('div');
 
-            PaymentServices.render(CreditCard, {
-              getCartId: () => ctx.cartId,
-              creditCardFormRef,
-            })($creditCard);
+              PaymentServices.render(CreditCard, {
+                getCartId: () => ctx.cartId,
+                creditCardFormRef,
+              })($creditCard);
 
-            ctx.replaceHTML($creditCard);
+              ctx.replaceHTML($creditCard);
+            },
+          },
+          [PaymentMethodCode.SMART_BUTTONS]: {
+            enabled: false,
+          },
+          [PaymentMethodCode.APPLE_PAY]: {
+            enabled: false,
+          },
+          [PaymentMethodCode.APM]: {
+            enabled: false,
+          },
+          [PaymentMethodCode.GOOGLE_PAY]: {
+            enabled: false,
+          },
+          [PaymentMethodCode.VAULT]: {
+            enabled: false,
+          },
+          [PaymentMethodCode.FASTLANE]: {
+            enabled: false,
           },
         },
-        [PaymentMethodCode.SMART_BUTTONS]: {
-          enabled: false,
-        },
-        [PaymentMethodCode.APPLE_PAY]: {
-          enabled: false,
-        },
-        [PaymentMethodCode.APM]: {
-          enabled: false,
-        },
-        [PaymentMethodCode.GOOGLE_PAY]: {
-          enabled: false,
-        },
-        [PaymentMethodCode.VAULT]: {
-          enabled: false,
-        },
-        [PaymentMethodCode.FASTLANE]: {
-          enabled: false,
-        },
       },
-    },
-  })(container),
-);
+    })(container),
+  );
+
+  const updateHeading = () => {
+    const heading = container.querySelector('.checkout-payment-methods__title h2, .checkout-payment-methods__title h3');
+    if (heading && heading.textContent !== 'Payment Method') {
+      heading.textContent = 'Payment Method';
+    }
+  };
+
+  updateHeading();
+  const observer = new MutationObserver(updateHeading);
+  observer.observe(container, { childList: true, subtree: true });
+
+  return result;
+};
 
 /**
  * Renders terms and conditions with agreement slots and manual consent mode
  * @param {HTMLElement} container - DOM element to render the terms in
  * @returns {Promise<Object>} - The rendered terms and conditions component
  */
-export const renderTermsAndConditions = async (container) => renderContainer(
-  CONTAINERS.TERMS_AND_CONDITIONS,
-  async () => CheckoutProvider.render(TermsAndConditions, {
-    slots: {
-      Agreements: (ctx) => {
-        ctx.appendAgreement(() => ({
-          name: 'default',
-          mode: 'manual',
-          translationId: 'Checkout.TermsAndConditions.label',
-        }));
+export const renderTermsAndConditions = async (container) => {
+  const result = await renderContainer(
+    CONTAINERS.TERMS_AND_CONDITIONS,
+    async () => CheckoutProvider.render(TermsAndConditions, {
+      slots: {
+        Agreements: (ctx) => {
+          ctx.appendAgreement(() => ({
+            name: 'default',
+            mode: 'manual',
+            translationId: 'Checkout.TermsAndConditions.label',
+          }));
+        },
       },
-    },
-  })(container),
-);
+    })(container),
+  );
+
+  const checkEmpty = () => {
+    if (!container.children.length || !container.innerText.trim()) {
+      container.style.display = 'none';
+    } else {
+      container.style.display = '';
+    }
+  };
+
+  checkEmpty();
+  const observer = new MutationObserver(checkEmpty);
+  observer.observe(container, { childList: true, subtree: true });
+
+  return result;
+};
 
 /**
  * Renders estimate shipping form for order summary slot
@@ -582,9 +760,16 @@ export const renderCustomerShippingAddresses = async (container, formRef, data) 
 
     const storeConfig = checkoutApi.getStoreConfigCache();
 
-    const inputsDefaultValueSet = cartShippingAddress && cartShippingAddress.id === undefined
+    const cartShippingValues = cartShippingAddress && cartShippingAddress.id === undefined
       ? transformCartAddressToFormValues(cartShippingAddress)
-      : { countryCode: storeConfig.defaultCountry };
+      : {};
+    const inputsDefaultValueSet = {
+      countryCode: cartShippingValues?.countryCode || storeConfig?.defaultCountry || 'US',
+      country_code: cartShippingValues?.countryCode || storeConfig?.defaultCountry || 'US',
+      country_id: cartShippingValues?.countryCode || storeConfig?.defaultCountry || 'US',
+      countryId: cartShippingValues?.countryCode || storeConfig?.defaultCountry || 'US',
+      ...cartShippingValues,
+    };
 
     const hasCartShippingAddress = Boolean(data.shippingAddresses?.[0]);
     let isFirstRenderShipping = true;
@@ -613,8 +798,8 @@ export const renderCustomerShippingAddresses = async (container, formRef, data) 
       minifiedView: false,
       onAddressData: (values) => {
         const canSetShippingAddressOnCart = !isFirstRenderShipping || !hasCartShippingAddress;
-        if (canSetShippingAddressOnCart) setShippingAddressOnCart(values);
-        if (!hasCartShippingAddress) estimateShippingCostOnCart(values);
+        if (canSetShippingAddressOnCart) safeSetAddressOnCart(setShippingAddressOnCart, values);
+        if (!hasCartShippingAddress) safeEstimateShippingCost(estimateShippingCostOnCart, values);
         if (isFirstRenderShipping) isFirstRenderShipping = false;
         notifyShippingValues(values);
       },
@@ -655,9 +840,16 @@ export const renderCustomerBillingAddresses = async (container, formRef, data) =
 
     const storeConfig = checkoutApi.getStoreConfigCache();
 
-    const inputsDefaultValueSet = cartBillingAddress && cartBillingAddress.id === undefined
+    const cartBillingValues = cartBillingAddress && cartBillingAddress.id === undefined
       ? transformCartAddressToFormValues(cartBillingAddress)
-      : { countryCode: storeConfig.defaultCountry };
+      : {};
+    const inputsDefaultValueSet = {
+      countryCode: cartBillingValues?.countryCode || storeConfig?.defaultCountry || 'US',
+      country_code: cartBillingValues?.countryCode || storeConfig?.defaultCountry || 'US',
+      country_id: cartBillingValues?.countryCode || storeConfig?.defaultCountry || 'US',
+      countryId: cartBillingValues?.countryCode || storeConfig?.defaultCountry || 'US',
+      ...cartBillingValues,
+    };
 
     const hasCartBillingAddress = Boolean(data.billingAddress);
     let isFirstRenderBilling = true;
@@ -752,9 +944,19 @@ export const renderAddressForm = async (container, formRef, data, addressType) =
         ? 'checkout-shipping-form__address-form'
         : 'checkout-billing-form__address-form';
 
-      const inputsDefaultValueSet = cartAddress
-        ? transformCartAddressToFormValues(cartAddress)
-        : { countryCode: storeConfig.defaultCountry };
+      const defaultValues = cartAddress ? transformCartAddressToFormValues(cartAddress) : {};
+      const inputsDefaultValueSet = {
+        countryCode: defaultValues?.countryCode || storeConfig?.defaultCountry || 'US',
+        country_code: defaultValues?.countryCode || storeConfig?.defaultCountry || 'US',
+        country_id: defaultValues?.countryCode || storeConfig?.defaultCountry || 'US',
+        countryId: defaultValues?.countryCode || storeConfig?.defaultCountry || 'US',
+        ...defaultValues,
+      };
+
+      // Trigger initial estimation for shipping form if no cart address exists
+      if (isShipping && !hasCartAddress && estimateShippingCostOnCart) {
+        safeEstimateShippingCost(estimateShippingCostOnCart, inputsDefaultValueSet, storeConfig?.defaultCountry || 'US');
+      }
 
       return AccountProvider.render(AddressForm, {
         addressesFormTitle: addressTitle,
@@ -767,11 +969,11 @@ export const renderAddressForm = async (container, formRef, data, addressType) =
         isOpen: true,
         onChange: (values) => {
           const canSetAddressOnCart = !isFirstRender || !hasCartAddress;
-          if (canSetAddressOnCart) setAddressOnCartFn(values);
+          if (canSetAddressOnCart) safeSetAddressOnCart(setAddressOnCartFn, values, storeConfig?.defaultCountry || 'US');
 
           // Only estimate shipping cost for shipping addresses when no cart address exists
           if (isShipping && !hasCartAddress && estimateShippingCostOnCart) {
-            estimateShippingCostOnCart(values);
+            safeEstimateShippingCost(estimateShippingCostOnCart, values, storeConfig?.defaultCountry || 'US');
           }
 
           if (isFirstRender) isFirstRender = false;

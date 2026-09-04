@@ -85,6 +85,14 @@ export default async function initializeDropins() {
 
     // on page load, check if user is authenticated
     const token = getUserTokenCookie();
+    // Keep cart auth flag in sync with the real token. A stale "authenticated"
+    // flag without a token clears the guest cart; a missing flag with a token
+    // makes checkout refresh initialize as guest then fail to re-sync.
+    if (token) {
+      localStorage.setItem('DROPIN__CART__CART__AUTHENTICATED', 'true');
+    } else {
+      localStorage.removeItem('DROPIN__CART__CART__AUTHENTICATED');
+    }
     // set auth headers
     setAuthHeaders(!!token);
 

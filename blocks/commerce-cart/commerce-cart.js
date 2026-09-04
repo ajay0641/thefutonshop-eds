@@ -33,32 +33,31 @@ import { readBlockConfig } from '../../scripts/aem.js';
 import { fetchPlaceholders, rootLink, getProductLink } from '../../scripts/commerce.js';
 
 /**
- * Adds edit controls beside remove for configurable items (TFS cart).
- * @param {Element} root
+ * Adds edit + remove controls for cart table rows (TFS cart).
+ * Uses updateProductsFromCart directly so remove keeps working after re-renders
+ * (unlike moving Preact-managed DOM nodes).
+ * @param {object} ctx CartSummaryTable Actions slot context
  * @param {Function} onEdit
  * @param {object} placeholders
  * @param {boolean} enableUpdatingProduct
+ * @param {boolean} allowRemove
  */
-function decorateCartItemActions(root, onEdit, placeholders, enableUpdatingProduct) {
-  if (!enableUpdatingProduct) return;
+function renderCartItemActions(ctx, onEdit, placeholders, enableUpdatingProduct, allowRemove) {
+  const {
+    item,
+    itemsUpdating,
+    setItemUpdating,
+    setItemUpdateError,
+  } = ctx;
 
-  const cart = Cart.getCartDataFromCache();
+  const actions = document.createElement('div');
+  actions.className = 'cart-cart-summary-table__item-actions';
 
-  root.querySelectorAll('.cart-cart-summary-table__row').forEach((row) => {
-    const actions = row.querySelector('.cart-cart-summary-table__item-actions');
-    if (!actions || actions.querySelector('.cart-item-edit-link')) return;
+  const isConfigurable = item?.itemType === 'ConfigurableCartItem'
+    || (Array.isArray(item?.selectedOptions) && item.selectedOptions.length > 0)
+    || (item?.bundleOptions && Object.keys(item.bundleOptions).length > 0);
 
-    const removeBtn = actions.querySelector(
-      '.cart-cart-summary-table__item-remove-button',
-    );
-    if (!removeBtn) return;
-
-    const uid = removeBtn.getAttribute('data-testid')?.replace('cart-table-item-remove-', '');
-    const item = cart?.items?.find((entry) => entry.uid === uid);
-    const isConfigurable = item?.itemType === 'ConfigurableCartItem'
-      || !!row.querySelector('.cart-cart-summary-table__item-configurations');
-    if (!item || !isConfigurable) return;
-
+  if (enableUpdatingProduct && isConfigurable) {
     const editLink = document.createElement('div');
     editLink.className = 'cart-item-edit-link';
 
@@ -71,8 +70,54 @@ function decorateCartItemActions(root, onEdit, placeholders, enableUpdatingProdu
       onClick: () => onEdit(item),
     })(editLink);
 
-    actions.insertBefore(editLink, removeBtn);
-  });
+    actions.append(editLink);
+  }
+
+  if (allowRemove) {
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'cart-cart-summary-table__item-remove-button';
+    removeBtn.setAttribute('aria-label', `Remove ${item.name} from the cart`);
+    removeBtn.setAttribute('data-testid', `cart-table-item-remove-${item.uid}`);
+    /* Outline trash — matches `/icons/trash.svg` (feather trash-2). */
+    removeBtn.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        <line x1="10" y1="11" x2="10" y2="17"></line>
+        <line x1="14" y1="11" x2="14" y2="17"></line>
+      </svg>
+    `;
+
+    const syncDisabled = () => {
+      removeBtn.disabled = Boolean(itemsUpdating?.get?.(item.uid)?.isUpdating);
+    };
+    syncDisabled();
+
+    removeBtn.addEventListener('click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (removeBtn.disabled) return;
+
+      try {
+        setItemUpdating?.(item.uid, true);
+        await Cart.updateProductsFromCart([{ uid: item.uid, quantity: 0 }]);
+      } catch (error) {
+        console.error('Failed to remove cart item:', error);
+        setItemUpdateError?.(item.uid, error?.message || 'Unable to remove item');
+      } finally {
+        setItemUpdating?.(item.uid, false);
+      }
+    });
+
+    actions.append(removeBtn);
+
+    ctx.onChange?.((next) => {
+      removeBtn.disabled = Boolean(next.itemsUpdating?.get?.(next.item.uid)?.isUpdating);
+    });
+  }
+
+  ctx.replaceWith(actions);
 }
 
 /**
@@ -300,6 +345,16 @@ export default async function decorate(block) {
           wrap.append(dec, input, inc);
           ctx.replaceWith(wrap);
         },
+
+        Actions: (ctx) => {
+          renderCartItemActions(
+            ctx,
+            handleEditButtonClick,
+            placeholders,
+            enableUpdatingProduct === 'true',
+            enableRemoveItem === 'true',
+          );
+        },
       },
     })($list),
 
@@ -381,12 +436,6 @@ export default async function decorate(block) {
 
   const syncItemActions = () => {
     window.requestAnimationFrame(() => {
-      decorateCartItemActions(
-        $list,
-        handleEditButtonClick,
-        placeholders,
-        enableUpdatingProduct === 'true',
-      );
       decorateShippingAccordion();
 
       // Expand discount accordion by default (TFS shows code field open)

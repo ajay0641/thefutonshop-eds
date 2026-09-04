@@ -42,6 +42,7 @@ import {
   renderCustomerBillingAddresses,
   renderCustomerShippingAddresses,
   renderGiftOptions,
+  renderHeaderLogin,
   renderLoginForm,
   renderMergedCartBanner,
   renderOrderSummary,
@@ -66,10 +67,11 @@ import {
 } from './constants.js';
 
 import { rootLink } from '../../scripts/commerce.js';
+import { getUserTokenCookie } from '../../scripts/initializers/index.js';
 
-// Initializers
+// Initializers — cart before checkout so checkout does not mount against a null cart
+import '../../scripts/initializers/cart.js';
 import '../../scripts/initializers/account.js';
-import '../../scripts/initializers/checkout.js';
 import '../../scripts/initializers/order.js';
 import '../../scripts/initializers/payment-services.js';
 
@@ -78,20 +80,58 @@ import { renderCheckoutSuccess, preloadCheckoutSuccess } from '../commerce-check
 
 preloadCheckoutSuccess();
 
+/**
+ * Redirect to cart only when we have a definitive empty cart model.
+ * The cart drop-in emits `null` while loading, during auth resets/merges, and on
+ * transient fetch failures — treating `null` as empty incorrectly sends shoppers
+ * from /checkout back to /cart (and can race with guest→customer cart sync).
+ * @param {import('@dropins/storefront-cart/data/models').CartModel|null|undefined} cartData
+ */
 function redirectToCartIfEmpty(cartData) {
   const isOrderPlaced = events.lastPayload('order/placed') !== undefined;
+  if (isOrderPlaced || cartData == null) return;
 
-  if (!isOrderPlaced && (cartData === null || cartData?.items?.length === 0)) {
+  if (cartData.items?.length === 0) {
     window.location.href = rootLink('/cart');
   }
+}
+
+/**
+ * Wait until cart/initialized has fired (including a cached eager payload).
+ * @returns {Promise<import('@dropins/storefront-cart/data/models').CartModel|null>}
+ */
+function waitForCartInitialized() {
+  return new Promise((resolve) => {
+    const subscription = events.on('cart/initialized', (data) => {
+      subscription.off();
+      resolve(data ?? null);
+    }, { eager: true });
+  });
+}
+
+/**
+ * If checkout initialized with null before cart was ready, poke cart/updated so
+ * the checkout drop-in re-syncs (it only listens to cart/updated after init).
+ * @param {import('@dropins/storefront-cart/data/models').CartModel|null|undefined} cartData
+ */
+function recoverCheckoutFromCart(cartData) {
+  if (!cartData?.items?.length) return;
+  const checkoutData = events.lastPayload('checkout/updated')
+    ?? events.lastPayload('checkout/initialized');
+  if (checkoutData) return;
+  events.emit('cart/updated', cartData);
 }
 
 export default async function decorate(block) {
   setMetaTags('Checkout');
   document.title = 'Checkout';
 
-  const cartData = events.lastPayload('cart/initialized');
+  // Ensure cart has settled before mounting checkout (avoids null init on refresh)
+  const cartData = await waitForCartInitialized();
   redirectToCartIfEmpty(cartData);
+
+  // Mount checkout after cart/initialized so its eager cart listener gets real data
+  await import('../../scripts/initializers/checkout.js');
 
   // Container and component references
   let shippingForm;
@@ -121,6 +161,7 @@ export default async function decorate(block) {
   const $loaderStatus = getElement(selectors.checkout.loaderStatus);
   const $mergedCartBanner = getElement(selectors.checkout.mergedCartBanner);
   const $heading = getElement(selectors.checkout.heading);
+  const $headerLogin = getElement(selectors.checkout.headerLogin);
   const $serverError = getElement(selectors.checkout.serverError);
   const $outOfStock = getElement(selectors.checkout.outOfStock);
   const $login = getElement(selectors.checkout.login);
@@ -136,6 +177,118 @@ export default async function decorate(block) {
   const $termsAndConditions = getElement(selectors.checkout.termsAndConditions);
 
   block.appendChild(checkoutFragment);
+
+  renderHeaderLogin($headerLogin);
+
+  function positionLoginFormInShippingForm() {
+    if (!$shippingForm || !$login) return;
+    const place = () => {
+      const titleEl = $shippingForm.querySelector(
+        '.account-address-form-wrapper__title, .dropin-header-container__title',
+      );
+      if (titleEl && titleEl.nextSibling !== $login) {
+        titleEl.after($login);
+      }
+    };
+    place();
+    setTimeout(place, 100);
+    setTimeout(place, 500);
+  }
+
+  function positionBillToShippingInShippingForm() {
+    if (!$shippingForm || !$billToShipping) return;
+    const place = () => {
+      if (!$shippingForm.contains($billToShipping)) {
+        $shippingForm.appendChild($billToShipping);
+      }
+    };
+    place();
+    setTimeout(place, 100);
+    setTimeout(place, 500);
+  }
+
+  function positionGiftCardsInPaymentMethods() {
+    if (!$paymentMethods || !$orderSummary) return;
+    const move = () => {
+      const giftCards = $orderSummary.querySelector('.cart-order-summary__gift-cards, .cart-gift-cards');
+      if (giftCards && !$paymentMethods.contains(giftCards)) {
+        $paymentMethods.appendChild(giftCards);
+      }
+    };
+    move();
+    setTimeout(move, 100);
+    setTimeout(move, 500);
+
+    const observer = new MutationObserver(move);
+    observer.observe($orderSummary, { childList: true, subtree: true });
+  }
+
+  positionGiftCardsInPaymentMethods();
+
+  function positionOrderSummaryContent() {
+    if (!$orderSummary || !$cartSummary) return;
+
+    const move = () => {
+      const orderHeading = $orderSummary.querySelector('.cart-order-summary__heading');
+      const orderHeadingText = $orderSummary.querySelector('.cart-order-summary__heading-text');
+      if (orderHeadingText && orderHeadingText.textContent !== 'Order Summary') {
+        orderHeadingText.textContent = 'Order Summary';
+      }
+
+      if (orderHeading && $cartSummary.previousElementSibling !== orderHeading) {
+        orderHeading.after($cartSummary);
+      }
+
+      const cartHeading = $cartSummary?.querySelector('.cart-summary-list__heading-text');
+      if (cartHeading && (cartHeading.innerText.includes('Your Cart') || cartHeading.innerText.includes('Cart'))) {
+        const countMatch = cartHeading.innerText.match(/\((\d+)\)/);
+        const count = countMatch ? countMatch[1] : '';
+        cartHeading.innerText = count ? `${count} ITEMS IN CART` : 'ITEMS IN CART';
+      }
+
+      if ($placeOrder && $orderSummary.lastElementChild !== $placeOrder) {
+        $orderSummary.appendChild($placeOrder);
+      }
+
+      $orderSummary.querySelectorAll('.dropin-cart-item').forEach((item) => {
+        const qtyVal = item.querySelector('.dropin-cart-item__quantity__value, .dropin-cart-item__quantity');
+        if (qtyVal && !qtyVal.dataset.formatted) {
+          const numMatch = qtyVal.innerText.match(/\d+/);
+          const num = numMatch ? numMatch[0] : '1';
+          qtyVal.innerHTML = `Qty: ${num}`;
+          qtyVal.dataset.formatted = 'true';
+        }
+
+        const img = item.querySelector('.dropin-cart-item__image img');
+        if (img) {
+          const srcset = img.getAttribute('srcset');
+          if (srcset && srcset.includes('height=NaN')) {
+            img.removeAttribute('srcset');
+          }
+          if (!img.dataset.errorHandled) {
+            img.dataset.errorHandled = 'true';
+            img.addEventListener('error', () => {
+              img.removeAttribute('srcset');
+              img.src = '/icons/cart.svg';
+            });
+          }
+        }
+      });
+    };
+
+    move();
+    setTimeout(move, 100);
+    setTimeout(move, 500);
+    setTimeout(move, 1500);
+
+    const observer = new MutationObserver(move);
+    observer.observe($orderSummary, { childList: true });
+    if ($cartSummary) {
+      observer.observe($cartSummary, { childList: true });
+    }
+  }
+
+  positionOrderSummaryContent();
 
   const handleValidation = () => validateForms([
     { name: LOGIN_FORM_NAME },
@@ -245,6 +398,9 @@ export default async function decorate(block) {
 
       billingForm = await renderAddressForm($billingForm, billingFormRef, data, 'billing');
     }
+
+    positionLoginFormInShippingForm();
+    positionBillToShippingInShippingForm();
   }
 
   async function displayCustomerAddressForms(data) {
@@ -275,15 +431,36 @@ export default async function decorate(block) {
         data,
       );
     }
+
+    positionLoginFormInShippingForm();
+    positionBillToShippingInShippingForm();
   }
 
   async function handleCheckoutUpdated(data) {
-    if (!data) return;
+    if (!data) {
+      // Null init/reset — try to recover from the latest cart model
+      recoverCheckoutFromCart(
+        events.lastPayload('cart/data') ?? events.lastPayload('cart/initialized'),
+      );
+      return;
+    }
     await initializeCheckout(data);
   }
 
+  // Only reload when the shopper signs in during checkout (guest → customer).
+  // Reloading on every authenticated=true (including page refresh) aborts
+  // address/payment hydration and leaves skeletons + "No payment methods".
+  let isAuthenticated = events.lastPayload('authenticated') === true
+    || Boolean(getUserTokenCookie());
+
   function handleAuthenticated(authenticated) {
-    if (!authenticated) return;
+    if (!authenticated) {
+      isAuthenticated = false;
+      return;
+    }
+
+    if (isAuthenticated) return;
+    isAuthenticated = true;
 
     // When a customer creates an account on the checkout success page and then
     // signs in, they will be redirected to the order details page with the order
@@ -320,5 +497,15 @@ export default async function decorate(block) {
   events.on('checkout/values', handleCheckoutValues);
   events.on('order/placed', handleOrderPlaced);
   events.on('cart/initialized', redirectToCartIfEmpty, { eager: true });
-  events.on('cart/data', redirectToCartIfEmpty);
+  events.on('cart/data', (data) => {
+    redirectToCartIfEmpty(data);
+    recoverCheckoutFromCart(data);
+  });
+
+  // Logged-in refresh: if checkout still has no model, force a cart sync once
+  if (getUserTokenCookie()) {
+    recoverCheckoutFromCart(
+      events.lastPayload('cart/data') ?? events.lastPayload('cart/initialized'),
+    );
+  }
 }

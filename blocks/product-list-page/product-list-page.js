@@ -9,7 +9,7 @@ import { tryRenderAemAssetsImage } from '@dropins/tools/lib/aem/assets.js';
 import { events } from '@dropins/tools/event-bus.js';
 import PlpSearchResults from './plp-search-results.js';
 // AEM
-import { readBlockConfig } from '../../scripts/aem.js';
+import { readBlockConfig, loadCSS } from '../../scripts/aem.js';
 import {
   CS_FETCH_GRAPHQL,
   canonicalizeCategoryUrl,
@@ -83,6 +83,10 @@ async function resolveUrlPathFromCategoryId(categoryId) {
 }
 
 export default async function decorate(block) {
+  // Card action icons (cart/wishlist) live in product-card.css — load before
+  // productSearch paints so they are not unstyled during PLP load.
+  const productCardStyles = loadCSS(`${window.hlx.codeBasePath}/styles/product-card.css`);
+
   const labels = await fetchPlaceholders();
   let storeConfig = DEFAULT_PLP_STORE_CONFIG;
   const storeConfigPromise = fetchPlpStoreConfig().catch(() => DEFAULT_PLP_STORE_CONFIG);
@@ -314,6 +318,9 @@ export default async function decorate(block) {
     }
   }
 
+  // Ensure card action styles are applied before products render.
+  await productCardStyles;
+
   // Start product search immediately; do not wait for store-config / menu GraphQL.
   const initialFetchSize = currentPageSize * initialLoadMorePage;
   if (config.urlpath) {
@@ -496,8 +503,8 @@ export default async function decorate(block) {
     buildUrl: () => canonicalizeCategoryUrl(new URL(window.location.href), categoryMeta),
   });
 
-  storeConfigPromise.then((config) => {
-    storeConfig = config;
+  storeConfigPromise.then((nextStoreConfig) => {
+    storeConfig = nextStoreConfig;
     const resolvedPageSize = resolvePageSize({
       storeConfig,
       viewMode: getViewMode(),
