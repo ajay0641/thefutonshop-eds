@@ -67,10 +67,11 @@ import {
 } from './constants.js';
 
 import { rootLink } from '../../scripts/commerce.js';
+import { getUserTokenCookie } from '../../scripts/initializers/index.js';
 
-// Initializers
+// Initializers — cart before checkout so checkout does not mount against a null cart
+import '../../scripts/initializers/cart.js';
 import '../../scripts/initializers/account.js';
-import '../../scripts/initializers/checkout.js';
 import '../../scripts/initializers/order.js';
 import '../../scripts/initializers/payment-services.js';
 
@@ -79,20 +80,58 @@ import { renderCheckoutSuccess, preloadCheckoutSuccess } from '../commerce-check
 
 preloadCheckoutSuccess();
 
+/**
+ * Redirect to cart only when we have a definitive empty cart model.
+ * The cart drop-in emits `null` while loading, during auth resets/merges, and on
+ * transient fetch failures — treating `null` as empty incorrectly sends shoppers
+ * from /checkout back to /cart (and can race with guest→customer cart sync).
+ * @param {import('@dropins/storefront-cart/data/models').CartModel|null|undefined} cartData
+ */
 function redirectToCartIfEmpty(cartData) {
   const isOrderPlaced = events.lastPayload('order/placed') !== undefined;
+  if (isOrderPlaced || cartData == null) return;
 
-  if (!isOrderPlaced && (cartData === null || cartData?.items?.length === 0)) {
+  if (cartData.items?.length === 0) {
     window.location.href = rootLink('/cart');
   }
+}
+
+/**
+ * Wait until cart/initialized has fired (including a cached eager payload).
+ * @returns {Promise<import('@dropins/storefront-cart/data/models').CartModel|null>}
+ */
+function waitForCartInitialized() {
+  return new Promise((resolve) => {
+    const subscription = events.on('cart/initialized', (data) => {
+      subscription.off();
+      resolve(data ?? null);
+    }, { eager: true });
+  });
+}
+
+/**
+ * If checkout initialized with null before cart was ready, poke cart/updated so
+ * the checkout drop-in re-syncs (it only listens to cart/updated after init).
+ * @param {import('@dropins/storefront-cart/data/models').CartModel|null|undefined} cartData
+ */
+function recoverCheckoutFromCart(cartData) {
+  if (!cartData?.items?.length) return;
+  const checkoutData = events.lastPayload('checkout/updated')
+    ?? events.lastPayload('checkout/initialized');
+  if (checkoutData) return;
+  events.emit('cart/updated', cartData);
 }
 
 export default async function decorate(block) {
   setMetaTags('Checkout');
   document.title = 'Checkout';
 
-  const cartData = events.lastPayload('cart/initialized');
+  // Ensure cart has settled before mounting checkout (avoids null init on refresh)
+  const cartData = await waitForCartInitialized();
   redirectToCartIfEmpty(cartData);
+
+  // Mount checkout after cart/initialized so its eager cart listener gets real data
+  await import('../../scripts/initializers/checkout.js');
 
   // Container and component references
   let shippingForm;
@@ -398,12 +437,30 @@ export default async function decorate(block) {
   }
 
   async function handleCheckoutUpdated(data) {
-    if (!data) return;
+    if (!data) {
+      // Null init/reset — try to recover from the latest cart model
+      recoverCheckoutFromCart(
+        events.lastPayload('cart/data') ?? events.lastPayload('cart/initialized'),
+      );
+      return;
+    }
     await initializeCheckout(data);
   }
 
+  // Only reload when the shopper signs in during checkout (guest → customer).
+  // Reloading on every authenticated=true (including page refresh) aborts
+  // address/payment hydration and leaves skeletons + "No payment methods".
+  let isAuthenticated = events.lastPayload('authenticated') === true
+    || Boolean(getUserTokenCookie());
+
   function handleAuthenticated(authenticated) {
-    if (!authenticated) return;
+    if (!authenticated) {
+      isAuthenticated = false;
+      return;
+    }
+
+    if (isAuthenticated) return;
+    isAuthenticated = true;
 
     // When a customer creates an account on the checkout success page and then
     // signs in, they will be redirected to the order details page with the order
@@ -440,5 +497,15 @@ export default async function decorate(block) {
   events.on('checkout/values', handleCheckoutValues);
   events.on('order/placed', handleOrderPlaced);
   events.on('cart/initialized', redirectToCartIfEmpty, { eager: true });
-  events.on('cart/data', redirectToCartIfEmpty);
+  events.on('cart/data', (data) => {
+    redirectToCartIfEmpty(data);
+    recoverCheckoutFromCart(data);
+  });
+
+  // Logged-in refresh: if checkout still has no model, force a cart sync once
+  if (getUserTokenCookie()) {
+    recoverCheckoutFromCart(
+      events.lastPayload('cart/data') ?? events.lastPayload('cart/initialized'),
+    );
+  }
 }

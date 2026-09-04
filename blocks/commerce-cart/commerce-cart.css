@@ -310,6 +310,9 @@
 
 .commerce-cart .cart-item-edit-link .dropin-button,
 .commerce-cart .cart-cart-summary-table__item-remove-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 28px;
   min-height: 28px;
   width: 28px;
@@ -321,6 +324,17 @@
   color: var(--tfs-cart-text);
   box-shadow: none;
   font-size: 0;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.commerce-cart .cart-cart-summary-table__item-remove-button svg,
+.commerce-cart .cart-item-edit-link .dropin-button svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  pointer-events: none;
 }
 
 /* ---- Continue / Update ---- */

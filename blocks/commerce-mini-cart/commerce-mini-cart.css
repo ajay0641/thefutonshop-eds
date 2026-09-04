@@ -219,6 +219,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  align-self: center;
   gap: 10px;
   width: auto;
 }
@@ -322,21 +323,26 @@
 .commerce-mini-cart__item-actions {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  align-self: center;
+  gap: 2px;
   position: relative;
+  flex-shrink: 0;
+  margin-left: 4px;
 }
 
 .commerce-mini-cart .cart-item-edit-link,
 .commerce-mini-cart .cart-item-edit-link .dropin-button,
+.commerce-mini-cart .commerce-mini-cart__remove-btn,
 .commerce-mini-cart .dropin-cart-item__remove,
 .commerce-mini-cart .commerce-mini-cart__item-actions .dropin-iconButton,
-.commerce-mini-cart .commerce-mini-cart__item-actions .dropin-cart-item__remove,
-.commerce-mini-cart [class*="remove"] .dropin-button,
-.commerce-mini-cart .dropin-button--tertiary {
+.commerce-mini-cart .commerce-mini-cart__item-actions .dropin-cart-item__remove {
   position: static !important;
   inset: auto !important;
   top: auto !important;
   right: auto !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 32px;
   min-width: 32px;
   width: 32px;
@@ -346,9 +352,26 @@
   background: transparent;
   color: var(--tfs-mini-text);
   box-shadow: none;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.commerce-mini-cart .cart-item-edit-link .dropin-button {
+  font-size: 0;
+  gap: 0;
+}
+
+.commerce-mini-cart .commerce-mini-cart__remove-btn svg,
+.commerce-mini-cart .cart-item-edit-link .dropin-button svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  pointer-events: none;
 }
 
 .commerce-mini-cart .cart-item-edit-link .dropin-button:hover:not(:disabled),
+.commerce-mini-cart .commerce-mini-cart__remove-btn:hover:not(:disabled),
 .commerce-mini-cart .dropin-cart-item__remove:hover:not(:disabled),
 .commerce-mini-cart .dropin-iconButton:hover:not(:disabled) {
   background: transparent;
