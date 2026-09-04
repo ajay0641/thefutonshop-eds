@@ -28,7 +28,13 @@ export function setTfsCardActionLoading(button, loading) {
  * Whether the shopper must open the PDP to configure the product before cart/wishlist.
  * PLP search products often omit `addToCartAllowed` (drop-in maps missing → false), so
  * do not treat that alone as "needs PDP". Prefer GraphQL `__typename`.
- * @param {{ isPriceRange?: boolean, addToCartAllowed?: boolean, typename?: string, options?: unknown[], attributes?: Array<{ name?: string }> }} product
+ * @param {{
+ *   isPriceRange?: boolean,
+ *   addToCartAllowed?: boolean,
+ *   typename?: string,
+ *   options?: unknown[],
+ *   attributes?: Array<{ name?: string }>
+ * }} product
  * @returns {boolean}
  */
 export function requiresTfsPdpConfiguration(product) {

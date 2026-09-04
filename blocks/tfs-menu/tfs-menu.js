@@ -75,7 +75,8 @@ function rewriteMenuLinks(block, categoryLookup) {
  */
 function attachCategoryNavigation(block) {
   block.addEventListener('click', (event) => {
-    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+    const isModifiedClick = event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+    if (event.defaultPrevented || event.button !== 0 || isModifiedClick) {
       return;
     }
 
