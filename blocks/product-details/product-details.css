@@ -413,10 +413,7 @@
 .product-details label {
   position: relative;
   display: block;
-  padding-top: 20px;
-  padding-left: 20px;
-  padding-bottom: 7px;
-  padding-right: 28px;
+  padding: 20px 28px 7px 20px;
   font-family: var(--tfs-pdp-font);
   font-size: 18px;
   font-weight: 400;
@@ -479,7 +476,7 @@
 }
 
 .pdp-swatches__options .dropin-picker select {
-  border: 1px solid rgba(160,161,144,.5);
+  border: 1px solid rgb(160 161 144 / 50%);
   color: #000;
 }
 
