@@ -37,6 +37,51 @@ import {
   removeOwnedCartLineItem,
 } from '../../scripts/cart-sync.js';
 
+const pendingQuantityUpdates = new Map();
+
+/**
+ * Queues and executes item quantity updates sequentially to prevent
+ * GraphQL race conditions and ensure accurate server price recalculation.
+ */
+function queueQuantityUpdate(uid, targetQty, onStateChange) {
+  let state = pendingQuantityUpdates.get(uid);
+  if (!state) {
+    state = { targetQty, inFlight: false, promise: Promise.resolve() };
+    pendingQuantityUpdates.set(uid, state);
+  }
+  state.targetQty = targetQty;
+
+  if (state.inFlight) {
+    return state.promise;
+  }
+
+  state.inFlight = true;
+  if (onStateChange) onStateChange(true);
+
+  state.promise = (async () => {
+    try {
+      while (state.targetQty !== null) {
+        const qtyToSend = state.targetQty;
+        state.targetQty = null;
+        // eslint-disable-next-line no-await-in-loop
+        const updatedCart = await Cart.updateProductsFromCart([{ uid, quantity: qtyToSend }]);
+        if (updatedCart) {
+          events.emit('cart/data', updatedCart);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update cart quantity:', err);
+      await Cart.refreshCart().catch(() => {});
+    } finally {
+      state.inFlight = false;
+      pendingQuantityUpdates.delete(uid);
+      if (onStateChange) onStateChange(false);
+    }
+  })();
+
+  return state.promise;
+}
+
 /**
  * Adds edit + remove controls for cart table rows (TFS cart).
  * Uses Preact Button onClick and owned-cart sync before remove.
@@ -292,7 +337,6 @@ export default async function decorate(block) {
             item,
             isUpdating,
             quantityInputValue,
-            handleInputChange,
           } = ctx;
 
           const wrap = document.createElement('div');
@@ -303,7 +347,6 @@ export default async function decorate(block) {
           dec.className = 'cart-qty__btn cart-qty__btn--dec';
           dec.setAttribute('aria-label', `Decrease quantity for ${item.name}`);
           dec.textContent = '−';
-          dec.disabled = isUpdating || quantityInputValue <= 1;
 
           const input = document.createElement('input');
           input.type = 'number';
@@ -311,28 +354,72 @@ export default async function decorate(block) {
           input.className = 'cart-qty__input';
           input.value = String(quantityInputValue);
           input.setAttribute('aria-label', `Quantity for ${item.name}`);
-          input.disabled = isUpdating;
-          input.addEventListener('change', handleInputChange);
 
           const inc = document.createElement('button');
           inc.type = 'button';
           inc.className = 'cart-qty__btn cart-qty__btn--inc';
           inc.setAttribute('aria-label', `Increase quantity for ${item.name}`);
           inc.textContent = '+';
-          inc.disabled = isUpdating;
 
-          const emit = (next) => {
-            const fakeEvent = {
-              target: { value: String(next) },
-              currentTarget: { value: String(next) },
-            };
-            handleInputChange(fakeEvent);
+          let isBusy = isUpdating;
+          const updateDisabledStates = () => {
+            const currentVal = Math.max(1, parseInt(input.value, 10) || 1);
+            input.disabled = isBusy;
+            inc.disabled = isBusy;
+            dec.disabled = isBusy || currentVal <= 1;
           };
 
-          dec.addEventListener('click', () => {
-            if (quantityInputValue > 1) emit(quantityInputValue - 1);
+          updateDisabledStates();
+
+          const setBusyState = (busy) => {
+            isBusy = busy;
+            updateDisabledStates();
+          };
+
+          let debounceTimer = null;
+          const triggerUpdate = (nextVal) => {
+            const val = Math.max(1, parseInt(nextVal, 10) || 1);
+            input.value = String(val);
+            updateDisabledStates();
+
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+              queueQuantityUpdate(item.uid, val, setBusyState);
+            }, 300);
+          };
+
+          input.addEventListener('input', () => {
+            const raw = parseInt(input.value, 10);
+            if (!Number.isNaN(raw) && raw >= 1) {
+              triggerUpdate(raw);
+            }
           });
-          inc.addEventListener('click', () => emit(quantityInputValue + 1));
+
+          input.addEventListener('change', () => {
+            triggerUpdate(input.value);
+          });
+
+          input.addEventListener('blur', () => {
+            triggerUpdate(input.value);
+          });
+
+          dec.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (isBusy) return;
+            const current = Math.max(1, parseInt(input.value, 10) || quantityInputValue || 1);
+            if (current > 1) {
+              triggerUpdate(current - 1);
+            }
+          });
+
+          inc.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (isBusy) return;
+            const current = Math.max(1, parseInt(input.value, 10) || quantityInputValue || 1);
+            triggerUpdate(current + 1);
+          });
 
           wrap.append(dec, input, inc);
           ctx.replaceWith(wrap);
