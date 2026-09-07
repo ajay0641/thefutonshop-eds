@@ -8,7 +8,7 @@
   flex-direction: column;
   align-items: stretch;
   width: 100%;
-  margin: 20px 0 var(--spacing-medium);
+  margin: 10px 0 var(--spacing-medium);
   overflow: hidden;
 }
 
@@ -29,7 +29,7 @@
   height: 100%;
   box-sizing: border-box;
   padding: 30px;
-  background-color: #556255;
+  background-color: #5f665a;
   color: #fff;
 }
 
