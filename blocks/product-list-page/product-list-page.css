@@ -49,8 +49,8 @@
     display: none;
 }
 
-.section.product-list-page-container > .category-hero .search__category-image picture,
-.section.product-list-page-container > .category-hero .search__category-image img {
+.section.product-list-page-container > .category-hero .search__category-image:not(.search__category-image--has-banner) picture,
+.section.product-list-page-container > .category-hero .search__category-image:not(.search__category-image--has-banner) img {
     display: block;
     width: 100%;
     height: auto;
@@ -61,6 +61,7 @@
     --cat-desc-serif: Georgia, "Times New Roman", Times, serif;
     --cat-desc-border: #eaeae3;
     --cat-desc-link: #63573e;
+
     margin-top: var(--spacing-xbig);
     color: var(--color-neutral-800);
     font-family: var(--type-base-font-family);

@@ -1,0 +1,110 @@
+.banner-description-wrapper {
+  display: none;
+}
+
+.search__category-image.search__category-image--has-banner,
+.section.product-list-page-container > .category-hero .search__category-image.search__category-image--has-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  margin: 20px 0 var(--spacing-medium);
+  overflow: hidden;
+}
+
+.search__category-image .banner-description-wrapper {
+  display: flex;
+  flex: 0 0 32%;
+  align-self: stretch;
+  margin: 0;
+  padding: 0;
+  background-color: #556255;
+}
+
+.search__category-image .banner-description {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 30px;
+  background-color: #556255;
+  color: #fff;
+}
+
+.banner-description__content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.banner-description__tag {
+  color: #fff;
+  font-size: 1.8rem;
+  margin: 0 0 25px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.banner-description__badge {
+  font-size: 2.4rem;
+    color: #5f665a;
+    display: inline-block;
+    background-color: #eaeae3;
+    padding: 8px 15px;
+    font-weight: 700;
+    margin-bottom: 20px;
+}
+
+.banner-description__title {
+  margin: 0 0 10px;
+  color: #fff;
+  font-size: 36px;
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+.banner-description__text {
+  margin: 0;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.search__category-image.search__category-image--has-banner picture,
+.section.product-list-page-container > .category-hero .search__category-image.search__category-image--has-banner picture {
+  position: relative;
+  display: block;
+  flex: 0 0 68%;
+  align-self: stretch;
+  width: 100%;
+  min-height: 250px;
+  margin: 0;
+}
+
+.search__category-image.search__category-image--has-banner img,
+.section.product-list-page-container > .category-hero .search__category-image.search__category-image--has-banner img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 100%;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center;
+}
+
+@media screen and (min-width: 768px) {
+  .search__category-image.search__category-image--has-banner,
+  .section.product-list-page-container > .category-hero .search__category-image.search__category-image--has-banner {
+    flex-direction: row;
+    align-items: stretch;
+    min-height: 420px;
+  }
+
+  .search__category-image.search__category-image--has-banner picture,
+  .section.product-list-page-container > .category-hero .search__category-image.search__category-image--has-banner picture {
+    min-height: 100%;
+  }
+}
