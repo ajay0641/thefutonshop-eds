@@ -2,7 +2,7 @@
 .product-reviews {
   /* stylelint-disable-next-line value-keyword-case -- brand serif stack */
   --tfs-reviews-font: Georgia, "Times New Roman", Times, serif;
-  --tfs-reviews-star: #c5a371;
+  --tfs-reviews-star: #c3aa7a;
   --tfs-reviews-star-empty: #d9d2c5;
   --tfs-reviews-btn: #555e4b;
   --tfs-reviews-btn-hover: #4a4c42;
@@ -98,7 +98,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  color: var(--tfs-reviews-star);
+  color: #fec600;
   font-size: 15px;
   letter-spacing: 1px;
   white-space: nowrap;
@@ -443,4 +443,38 @@
   color: #444;
   font-size: 14px;
   line-height: 1.5;
+}
+
+/* PDP Header Review Summary (rendered after .product-details__header) */
+.product-details__review-summary {
+  margin-bottom: 12px;
+}
+
+.product-details__review-summary-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.product-details__review-summary-stars {
+  color: #c3aa7a;
+  font-size: 22px;
+  letter-spacing: 2px;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+}
+
+.product-details__review-summary-link {
+  color: #5f665a;
+  font-size: 16px;
+  font-weight: 400;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.product-details__review-summary-link:hover {
+  color: #1a4254;
 }

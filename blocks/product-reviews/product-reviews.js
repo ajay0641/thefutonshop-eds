@@ -57,6 +57,83 @@ async function submitReview(payload) {
   }
 }
 
+function renderPdpHeaderReviewSummary(avgRating, reviewCount) {
+  const mountSummary = () => {
+    const pdpHeader = document.querySelector('.product-details__header');
+    if (!pdpHeader) return false;
+
+    let summaryEl = document.querySelector('.product-details__review-summary');
+    if (!summaryEl) {
+      summaryEl = document.createElement('div');
+      summaryEl.className = 'product-details__review-summary';
+      pdpHeader.after(summaryEl);
+    }
+
+    summaryEl.textContent = '';
+
+    const container = document.createElement('div');
+    container.className = 'product-details__review-summary-content';
+
+    const starsEl = document.createElement('span');
+    starsEl.className = 'product-details__review-summary-stars';
+
+    const roundedRating = Math.round(avgRating);
+    let starsHtml = '';
+    for (let i = 1; i <= 5; i += 1) {
+      starsHtml += (reviewCount > 0 && i <= roundedRating) ? '★' : '☆';
+    }
+    starsEl.textContent = starsHtml;
+
+    const linkEl = document.createElement('a');
+    linkEl.href = '#product-details-tab-reviews';
+    linkEl.className = 'product-details__review-summary-link';
+
+    if (reviewCount > 0) {
+      linkEl.textContent = `${reviewCount} ${reviewCount === 1 ? 'Review' : 'Reviews'}`;
+    } else {
+      linkEl.textContent = 'Write a review';
+    }
+
+    const handleGoToReviews = (e) => {
+      e.preventDefault();
+      const reviewsTabBtn = document.getElementById('product-details-tab-btn-reviews');
+      if (reviewsTabBtn) {
+        reviewsTabBtn.click();
+        reviewsTabBtn.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      if (reviewCount === 0) {
+        setTimeout(() => {
+          const writeBtn = document.querySelector('.product-reviews-write-btn');
+          const formContainer = document.querySelector('.product-reviews-form-container');
+          if (formContainer && formContainer.classList.contains('is-hidden') && writeBtn) {
+            writeBtn.click();
+          }
+        }, 300);
+      }
+    };
+
+    starsEl.addEventListener('click', handleGoToReviews);
+    linkEl.addEventListener('click', handleGoToReviews);
+
+    container.append(starsEl, linkEl);
+    summaryEl.appendChild(container);
+    return true;
+  };
+
+  if (!mountSummary()) {
+    const main = document.querySelector('main');
+    if (main) {
+      const observer = new MutationObserver(() => {
+        if (mountSummary()) {
+          observer.disconnect();
+        }
+      });
+      observer.observe(main, { childList: true, subtree: true });
+      setTimeout(() => observer.disconnect(), 3000);
+    }
+  }
+}
+
 /**
  * Decorates product-reviews block
  * @param {Element} block
@@ -93,6 +170,8 @@ export default async function decorate(block) {
   const avgRating = reviewsData?.averageRating || 0;
   const reviewCount = reviewsData?.reviewCount || 0;
   const reviewsList = reviewsData?.reviews || [];
+
+  renderPdpHeaderReviewSummary(avgRating, reviewCount);
 
   function createBreakdownRows(list = []) {
     const total = list.length;
@@ -311,6 +390,7 @@ export default async function decorate(block) {
 
       const freshData = await fetchReviews(sku);
       if (freshData) {
+        renderPdpHeaderReviewSummary(freshData.averageRating || 0, freshData.reviewCount || 0);
         starsEl.textContent = renderStars(freshData.averageRating);
         countEl.textContent = `${freshData.reviewCount} ${freshData.reviewCount === 1 ? 'Review' : 'Reviews'}`;
         const newBreakdown = createBreakdownRows(freshData.reviews || []);
