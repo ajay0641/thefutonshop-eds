@@ -41,6 +41,7 @@ import { getUserTokenCookie } from '../../scripts/initializers/index.js';
 
 // Initializers
 import { IMAGES_SIZES } from '../../scripts/initializers/pdp.js';
+import { initPdpImageMagnifier } from '../../scripts/pdp-zoom.js';
 import '../../scripts/initializers/cart.js';
 import '../../scripts/initializers/wishlist.js';
 import {
@@ -763,7 +764,7 @@ export default async function decorate(block) {
       gap: 'small',
       loop: false,
       videos: true, // Display videos if available
-      zoom: { closeButton: true },
+      zoomType: 'none',
       imageParams: {
         ...IMAGES_SIZES,
       },
@@ -779,7 +780,7 @@ export default async function decorate(block) {
       gap: 'small',
       loop: false,
       videos: true,
-      zoom: { closeButton: true },
+      zoomType: 'none',
       imageParams: {
         ...IMAGES_SIZES,
       },
@@ -819,6 +820,7 @@ export default async function decorate(block) {
   await setupPdpWishlist($wishlistHost);
   layoutHeaderMeta($header, $wishlistHost);
   initPdpTabs(block);
+  initPdpImageMagnifier(block);
 
   let hasFaqsLoaded = false;
   setupFaqTabIntegration(block, (hasFaqs) => {

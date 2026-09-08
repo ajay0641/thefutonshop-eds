@@ -190,8 +190,16 @@ export default async function decorate(block) {
   const renderCategoryImage = (image) => {
     if (!$categoryImage) return;
     $categoryImage.innerHTML = '';
-    if (!image?.url) return;
+    const bannerWrapper = document.querySelector('.banner-description-wrapper')
+      || document.querySelector('.banner-description');
 
+    if (!image?.url) {
+      $categoryImage.classList.add('search__category-image--empty');
+      if (bannerWrapper) bannerWrapper.style.display = 'none';
+      return;
+    }
+
+    $categoryImage.classList.remove('search__category-image--empty');
     const picture = document.createElement('picture');
     const img = document.createElement('img');
     img.src = image.url;
@@ -199,6 +207,17 @@ export default async function decorate(block) {
     img.loading = 'lazy';
     img.decoding = 'async';
     picture.append(img);
+
+    if (bannerWrapper) {
+      $categoryImage.append(bannerWrapper);
+      bannerWrapper.style.display = '';
+      const bannerBlock = bannerWrapper.classList.contains('banner-description')
+        ? bannerWrapper
+        : bannerWrapper.querySelector('.banner-description');
+      if (bannerBlock) bannerBlock.style.display = 'flex';
+      $categoryImage.classList.add('search__category-image--has-banner');
+    }
+
     $categoryImage.append(picture);
   };
 
