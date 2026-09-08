@@ -37,10 +37,14 @@ export function isProductImagePlaceholder(url) {
 export function resolveProductImageSrc(url) {
   const trimmed = typeof url === 'string' ? url.trim() : '';
   if (!trimmed) return getProductImagePlaceholderUrl();
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  if (trimmed.startsWith('//')) return `${window.location.protocol}${trimmed}`;
+  let normalized = trimmed;
+  if (normalized.startsWith('http://')) {
+    normalized = normalized.replace(/^http:\/\//i, 'https://');
+  }
+  if (/^https?:\/\//i.test(normalized)) return normalized;
+  if (normalized.startsWith('//')) return `${window.location.protocol}${normalized}`;
   try {
-    return new URL(trimmed, window.location.origin).href;
+    return new URL(normalized, window.location.origin).href;
   } catch {
     return getProductImagePlaceholderUrl();
   }
