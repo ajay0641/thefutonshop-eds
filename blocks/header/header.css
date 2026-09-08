@@ -1,3 +1,4 @@
+/* stylelint-disable no-descending-specificity */
 :root {
   --tfs-header-max-width: 1630px;
   --tfs-header-pad: 15px;
@@ -451,6 +452,7 @@ header nav .nav-search .search-bar-result .dropin-product-item-card {
 
 header nav .nav-search .search-bar-result .dropin-product-item-card__image-container,
 header nav .nav-search .search-bar-result .dropin-product-item-card__image,
+header nav .nav-search .search-bar-result .dropin-product-item-card__image div,
 header nav .nav-search .search-bar-result .dropin-product-item-card__image a {
   display: block;
   height: 64px;

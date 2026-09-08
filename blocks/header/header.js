@@ -407,17 +407,25 @@ export default async function decorate(block) {
           const anchorWrapper = document.createElement('a');
           anchorWrapper.href = getProductLink(product.urlKey, product.sku);
 
+          const width = 96;
+          const height = 96;
+
           tryRenderAemAssetsImage(ctx, {
-            alias: product.sku,
+            alias: product.sku || 'search-item',
             imageProps: {
               ...imageProps,
-              width: 96,
-              height: 96,
+              width,
+              height,
+              params: {
+                ...imageProps?.params,
+                width,
+                height,
+              },
             },
             wrapper: anchorWrapper,
             params: {
-              width: 96,
-              height: 96,
+              width,
+              height,
             },
           });
         },
