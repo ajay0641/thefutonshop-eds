@@ -314,7 +314,15 @@ export default async function decorate(block) {
     // preload mini cart fragment if user has a cart
     if (data) loadMiniCartFragment();
 
-    const totalQuantity = data?.totalQuantity ?? 0;
+    let totalQuantity = data?.totalQuantity;
+    if (totalQuantity == null) {
+      totalQuantity = data?.total_quantity;
+    }
+    if (totalQuantity == null && (data?.items || data?.itemsV2?.items)) {
+      const items = data?.items || data?.itemsV2?.items || [];
+      totalQuantity = items.reduce((sum, item) => sum + (item?.quantity || 1), 0);
+    }
+    totalQuantity = totalQuantity ?? 0;
 
     if (totalQuantity) {
       cartButton.setAttribute('data-count', totalQuantity);

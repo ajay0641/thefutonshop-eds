@@ -159,7 +159,7 @@ export default async function decorate(block) {
   let cartData = await waitForCartInitialized();
   // Logged-in: replace stale guest cart id before checkout sync (stops ownership loops)
   if (getUserTokenCookie()) {
-    cartData = (await ensureOwnedCart()) || cartData;
+    cartData = (await ensureOwnedCart(true)) || cartData;
   }
   redirectToCartIfEmpty(cartData);
 
@@ -446,6 +446,7 @@ export default async function decorate(block) {
       shippingAddresses = null;
       $shippingForm.innerHTML = '';
     } else if (!shippingAddresses) {
+      shippingFormSkeleton?.remove();
       shippingForm?.remove();
       shippingForm = null;
       shippingFormRef.current = null;
@@ -458,6 +459,7 @@ export default async function decorate(block) {
     }
 
     if (!billingAddresses) {
+      billingFormSkeleton?.remove();
       billingForm?.remove();
       billingForm = null;
       billingFormRef.current = null;

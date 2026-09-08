@@ -35,52 +35,8 @@ import { getCartItemImageSlotConfig } from '../../scripts/product-image.js';
 import {
   ensureOwnedCart,
   removeOwnedCartLineItem,
+  queueQuantityUpdate,
 } from '../../scripts/cart-sync.js';
-
-const pendingQuantityUpdates = new Map();
-
-/**
- * Queues and executes item quantity updates sequentially to prevent
- * GraphQL race conditions and ensure accurate server price recalculation.
- */
-function queueQuantityUpdate(uid, targetQty, onStateChange) {
-  let state = pendingQuantityUpdates.get(uid);
-  if (!state) {
-    state = { targetQty, inFlight: false, promise: Promise.resolve() };
-    pendingQuantityUpdates.set(uid, state);
-  }
-  state.targetQty = targetQty;
-
-  if (state.inFlight) {
-    return state.promise;
-  }
-
-  state.inFlight = true;
-  if (onStateChange) onStateChange(true);
-
-  state.promise = (async () => {
-    try {
-      while (state.targetQty !== null) {
-        const qtyToSend = state.targetQty;
-        state.targetQty = null;
-        // eslint-disable-next-line no-await-in-loop
-        const updatedCart = await Cart.updateProductsFromCart([{ uid, quantity: qtyToSend }]);
-        if (updatedCart) {
-          events.emit('cart/data', updatedCart);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to update cart quantity:', err);
-      await Cart.refreshCart().catch(() => {});
-    } finally {
-      state.inFlight = false;
-      pendingQuantityUpdates.delete(uid);
-      if (onStateChange) onStateChange(false);
-    }
-  })();
-
-  return state.promise;
-}
 
 /**
  * Adds edit + remove controls for cart table rows (TFS cart).
@@ -352,7 +308,7 @@ export default async function decorate(block) {
           input.type = 'number';
           input.min = '1';
           input.className = 'cart-qty__input';
-          input.value = String(quantityInputValue);
+          input.value = String(quantityInputValue || item.quantity || 1);
           input.setAttribute('aria-label', `Quantity for ${item.name}`);
 
           const inc = document.createElement('button');
@@ -407,7 +363,10 @@ export default async function decorate(block) {
             e.preventDefault();
             e.stopPropagation();
             if (isBusy) return;
-            const current = Math.max(1, parseInt(input.value, 10) || quantityInputValue || 1);
+            const current = Math.max(
+              1,
+              parseInt(input.value, 10) || quantityInputValue || item.quantity || 1,
+            );
             if (current > 1) {
               triggerUpdate(current - 1);
             }
@@ -417,8 +376,19 @@ export default async function decorate(block) {
             e.preventDefault();
             e.stopPropagation();
             if (isBusy) return;
-            const current = Math.max(1, parseInt(input.value, 10) || quantityInputValue || 1);
+            const current = Math.max(
+              1,
+              parseInt(input.value, 10) || quantityInputValue || item.quantity || 1,
+            );
             triggerUpdate(current + 1);
+          });
+
+          ctx.onChange?.((next) => {
+            const nextVal = next.quantityInputValue ?? next.item?.quantity ?? 1;
+            if (!isBusy) {
+              input.value = String(nextVal);
+              updateDisabledStates();
+            }
           });
 
           wrap.append(dec, input, inc);

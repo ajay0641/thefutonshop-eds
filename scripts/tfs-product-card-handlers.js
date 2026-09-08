@@ -15,6 +15,7 @@ import {
 } from './components/tfs-wishlist-toast/tfs-wishlist-toast.js';
 import { showWishlistAuthModal } from './wishlist-auth-modal.js';
 import { setProductCardActionLoading } from './product-card.js';
+import { ensureOwnedCart } from './cart-sync.js';
 
 /**
  * @param {HTMLElement|null} button
@@ -215,6 +216,7 @@ export async function createTfsProductCardHandlers(root) {
     setTfsCardActionLoading(button, true);
     try {
       syncCartAuthHeaders(cartApi);
+      await ensureOwnedCart();
       await ensureCartReady(cartApi);
       const previousQuantity = cartApi.getCartDataFromCache()?.totalQuantity ?? 0;
       const cart = await cartApi.addProductsToCart([{ sku: product.sku, quantity: 1 }]);

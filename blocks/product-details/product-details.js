@@ -44,6 +44,7 @@ import { IMAGES_SIZES } from '../../scripts/initializers/pdp.js';
 import { initPdpImageMagnifier } from '../../scripts/pdp-zoom.js';
 import '../../scripts/initializers/cart.js';
 import '../../scripts/initializers/wishlist.js';
+import { ensureOwnedCart } from '../../scripts/cart-sync.js';
 import {
   ensureProductImages,
   getPrimaryProductImageUrl,
@@ -923,10 +924,15 @@ export default async function decorate(block) {
         }
 
         // --- Add new item ---
+        await ensureOwnedCart();
         const { addProductsToCart } = await import(
           '@dropins/storefront-cart/api.js'
         );
-        await addProductsToCart([{ ...values }]);
+        const updatedCart = await addProductsToCart([{ ...values }]);
+        if (updatedCart) {
+          events.emit('cart/data', updatedCart);
+          events.emit('cart/updated', updatedCart);
+        }
 
         // Render success alert
         inlineAlert?.remove();

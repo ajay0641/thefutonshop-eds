@@ -472,3 +472,60 @@
   max-height: none;
   min-height: 0;
 }
+
+/* Custom Mini Cart Quantity Controls */
+.mini-cart-qty {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--tfs-mini-border);
+  border-radius: 2px;
+  background: #fff;
+  height: 32px;
+}
+
+.mini-cart-qty__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--tfs-mini-text);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.mini-cart-qty__btn:hover:not(:disabled) {
+  background: #f5f5f0;
+}
+
+.mini-cart-qty__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.mini-cart-qty__input {
+  width: 32px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--tfs-mini-border);
+  border-right: 1px solid var(--tfs-mini-border);
+  background: transparent;
+  color: var(--tfs-mini-text);
+  font-family: var(--tfs-mini-font);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.mini-cart-qty__input::-webkit-outer-spin-button,
+.mini-cart-qty__input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
