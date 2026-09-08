@@ -27,6 +27,11 @@
     line-height: 1.1;
 }
 
+.commerce-checkout .account-addresses-wrapper__footer-section {
+    margin-top: 20px;
+    margin-bottom: 30px;
+}
+
 .checkout__subtitle {
     font-size: 18px;
 }
