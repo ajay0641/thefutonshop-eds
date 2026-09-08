@@ -310,7 +310,11 @@
   gap: 8px;
 }
 
-.commerce-cart .cart-item-edit-link .dropin-button,
+.commerce-cart .cart-item-edit-link,
+.cart-item-edit-link {
+  display: none !important;
+}
+
 .commerce-cart .cart-cart-summary-table__item-remove-button,
 .commerce-cart .cart-cart-summary-table__item-remove-button.dropin-iconButton {
   display: inline-flex;
@@ -344,8 +348,7 @@
 /* ---- Continue / Update ---- */
 .cart__actions {
   display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
+  flex-flow: column nowrap;
   justify-content: flex-start;
   gap: 10px;
   margin-top: 20px;
@@ -808,8 +811,7 @@
   }
 
   .cart__actions {
-    flex-direction: row;
-    flex-wrap: wrap;
+    flex-flow: row wrap;
     justify-content: space-between;
     gap: 12px;
     margin-top: 28px;
@@ -904,8 +906,7 @@
   }
 
   .commerce-cart .cart__coupons .coupon-code-form__action {
-    flex-direction: column;
-    flex-wrap: nowrap;
+    flex-flow: column nowrap;
     align-items: stretch;
     gap: 12px;
   }
@@ -934,4 +935,51 @@
   .commerce-cart .cart-shipping-accordion__summary {
     font-size: 18px;
   }
+}
+
+.commerce-cart .cart-empty-cart,
+.cart-empty-cart {
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.commerce-cart .dropin-card--secondary,
+.cart-empty-cart .dropin-card--secondary {
+  border: 1px solid var(--tfs-cart-border);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: none;
+}
+
+.commerce-cart .cart-empty-cart__icon,
+.commerce-cart .dropin-illustrated-message__icon,
+.cart-empty-cart .dropin-icon,
+.cart-empty-cart svg {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 80px !important;
+  height: 80px !important;
+  margin: 0 auto 20px !important;
+  color: var(--tfs-cart-olive) !important;
+  overflow: visible !important;
+}
+
+.commerce-cart .cart-empty-cart__icon g,
+.commerce-cart .dropin-illustrated-message__icon g,
+.cart-empty-cart svg g,
+.cart-empty-cart svg path {
+  clip-path: none !important;
+}
+
+.commerce-cart .cart-empty-cart__icon path,
+.commerce-cart .dropin-illustrated-message__icon path,
+.cart-empty-cart svg path {
+  clip-path: none !important;
+  stroke: var(--tfs-cart-olive) !important;
+  stroke-width: 1.75px !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }

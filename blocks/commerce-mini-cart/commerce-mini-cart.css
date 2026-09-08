@@ -1,4 +1,5 @@
 /* TFS minicart — matches thefutonshop.com cart drawer */
+/* stylelint-disable no-descending-specificity */
 
 .block.commerce-mini-cart {
   --tfs-mini-text: #000;
@@ -115,8 +116,41 @@
   display: none;
 }
 
+.commerce-mini-cart .cart-empty-cart__icon,
+.commerce-mini-cart .dropin-illustrated-message__icon,
+.commerce-mini-cart .cart-empty-cart .dropin-icon,
+.commerce-mini-cart .cart-empty-cart svg {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 64px !important;
+  height: 64px !important;
+  margin: 0 auto 16px !important;
+  color: var(--tfs-mini-muted) !important;
+  overflow: visible !important;
+}
+
+.commerce-mini-cart .cart-empty-cart__icon g,
+.commerce-mini-cart .dropin-illustrated-message__icon g,
+.commerce-mini-cart .cart-empty-cart svg g,
+.commerce-mini-cart .cart-empty-cart svg path {
+  clip-path: none !important;
+}
+
+.commerce-mini-cart .cart-empty-cart__icon path,
+.commerce-mini-cart .dropin-illustrated-message__icon path,
+.commerce-mini-cart .cart-empty-cart svg path {
+  clip-path: none !important;
+  stroke: var(--tfs-mini-muted) !important;
+  stroke-width: 1.75px !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
 .commerce-mini-cart .dropin-cart-list__wrapper {
-  grid-gap: 0;
+  gap: 0;
 }
 
 /* Product rows — keep drop-in wrapper grid intact */
@@ -145,8 +179,7 @@
     "image attrs price"
     "image qty qty"
     "image footer footer";
-  column-gap: 14px;
-  row-gap: 8px;
+  gap: 8px 14px;
   align-items: start;
 }
 
@@ -212,8 +245,7 @@
 .commerce-mini-cart .dropin-cart-item__price {
   grid-area: price;
   margin: 0;
-  align-self: start;
-  justify-self: end;
+  place-self: start end;
   color: var(--tfs-mini-text);
   font-size: 14px;
   font-weight: 700;
@@ -355,15 +387,16 @@
 }
 
 .commerce-mini-cart .cart-item-edit-link,
-.commerce-mini-cart .cart-item-edit-link .dropin-button,
+.cart-item-edit-link {
+  display: none !important;
+}
+
 .commerce-mini-cart .commerce-mini-cart__remove-btn,
 .commerce-mini-cart .dropin-cart-item__remove,
 .commerce-mini-cart .commerce-mini-cart__item-actions .dropin-iconButton,
 .commerce-mini-cart .commerce-mini-cart__item-actions .dropin-cart-item__remove {
   position: static !important;
   inset: auto !important;
-  top: auto !important;
-  right: auto !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -380,17 +413,7 @@
   pointer-events: auto;
 }
 
-.commerce-mini-cart .cart-item-edit-link .dropin-button {
-  font-size: 0;
-  gap: 0;
-}
-
-.commerce-mini-cart .cart-item-edit-link {
-  display: none;
-}
-
-.commerce-mini-cart .commerce-mini-cart__remove-btn svg,
-.commerce-mini-cart .cart-item-edit-link .dropin-button svg {
+.commerce-mini-cart .commerce-mini-cart__remove-btn svg {
   display: block;
   width: 18px;
   height: 18px;
@@ -498,13 +521,13 @@
   cursor: pointer;
 }
 
-.mini-cart-qty__btn:hover:not(:disabled) {
-  background: #f5f5f0;
-}
-
 .mini-cart-qty__btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.mini-cart-qty__btn:hover:not(:disabled) {
+  background: #f5f5f0;
 }
 
 .mini-cart-qty__input {
@@ -521,11 +544,10 @@
   font-weight: 600;
   text-align: center;
   appearance: textfield;
-  -moz-appearance: textfield;
 }
 
 .mini-cart-qty__input::-webkit-outer-spin-button,
 .mini-cart-qty__input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
+  appearance: none;
   margin: 0;
 }
