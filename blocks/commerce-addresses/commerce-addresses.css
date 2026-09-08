@@ -1,1 +1,6 @@
-/* stylelint-disable no-empty-source */
+.account-addresses-wrapper__footer-section,
+.commerce-addresses .account-addresses-wrapper__footer-section {
+  margin-top: 20px;
+  margin-bottom: 30px;
+}
+
