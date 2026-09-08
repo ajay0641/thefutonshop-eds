@@ -78,47 +78,63 @@ export function resolveCartItemUid(item, cart) {
   return match?.uid || item.uid;
 }
 
+let ownedCartPromise = null;
+
 /**
  * Loads the cart owned by the current user and persists its id for mutations.
- * Logged-in: drop guest cart-id first so refresh uses customerCart only.
- * A guest id + Bearer token causes ownership errors and checkout sync loops.
+ * Deduplicates in-flight calls to prevent redundant CUSTOMER_CART_QUERY calls.
+ * @param {boolean} [forceRefresh=false]
  * @returns {Promise<object|null>}
  */
-export async function ensureOwnedCart() {
-  const isAuth = restoreCartAuthState();
-
-  if (isAuth) {
-    clearStoredCartId();
-    restoreCartAuthState();
+export async function ensureOwnedCart(forceRefresh = false) {
+  if (ownedCartPromise && !forceRefresh) {
+    return ownedCartPromise;
   }
 
-  try {
-    const cart = await Cart.refreshCart();
-    if (cart?.id) {
-      Cart.s.cartId = cart.id;
-      events.emit('cart/data', cart);
-      return cart;
+  ownedCartPromise = (async () => {
+    const isAuth = restoreCartAuthState();
+
+    // Return cached cart model if already available and valid
+    const cached = Cart.getCartDataFromCache();
+    if (cached?.id && !forceRefresh) {
+      if (Cart.s && Cart.s.cartId !== cached.id) {
+        Cart.s.cartId = cached.id;
+      }
+      return cached;
     }
-  } catch (error) {
-    console.error('Failed to refresh cart:', error);
-  }
 
-  if (isAuth) {
-    restoreCartAuthState();
     try {
-      const customerCart = await Cart.getCartData();
-      if (customerCart?.id) {
-        Cart.s.cartId = customerCart.id;
-        events.emit('cart/data', customerCart);
-        return customerCart;
+      const cart = await Cart.refreshCart();
+      if (cart?.id) {
+        if (Cart.s) Cart.s.cartId = cart.id;
+        events.emit('cart/data', cart);
+        return cart;
       }
     } catch (error) {
-      console.error('Failed to load customer cart:', error);
-      restoreCartAuthState();
+      console.warn('Cart refresh/merge failed, clearing invalid guest cart:', error?.message || error);
+      if (isAuth) {
+        clearStoredCartId();
+        if (Cart.s) Cart.s.cartId = null;
+        restoreCartAuthState();
+        try {
+          const freshCart = await Cart.getCartData();
+          if (freshCart?.id) {
+            if (Cart.s) Cart.s.cartId = freshCart.id;
+            events.emit('cart/data', freshCart);
+            return freshCart;
+          }
+        } catch (freshErr) {
+          console.error('Failed to fetch customer cart after clear:', freshErr?.message || freshErr);
+        }
+      }
     }
-  }
 
-  return Cart.getCartDataFromCache();
+    return Cart.getCartDataFromCache();
+  })().finally(() => {
+    ownedCartPromise = null;
+  });
+
+  return ownedCartPromise;
 }
 
 /**
