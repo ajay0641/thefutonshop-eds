@@ -93,13 +93,19 @@ export function parseProductCardData(product) {
   const currency = minPrice.currency ?? maxPrice.currency ?? 'USD';
 
   let rating = parseNumber(getAttributeValue(product.attributes, ['rating_summary', 'rating']));
+  if (rating == null && product.averageRating != null) {
+    rating = parseNumber(product.averageRating);
+  }
   if (rating != null && rating > 5) {
     rating = Math.min(5, rating / 20);
   }
 
-  const reviewCount = parseNumber(
+  let reviewCount = parseNumber(
     getAttributeValue(product.attributes, ['review_count', 'reviews_count']),
   );
+  if (reviewCount == null && product.reviewCount != null) {
+    reviewCount = parseNumber(product.reviewCount);
+  }
 
   const subtitleRaw = getAttributeValue(
     product.attributes,
@@ -320,7 +326,7 @@ function buildActions({
  * @param {(product: object) => boolean} [options.requiresPdpConfiguration]
  * @param {(product: object, button: HTMLElement) => void} [options.onAddToCartClick]
  * @param {(product: object, button: HTMLElement) => void} [options.onWishlistClick]
- * @param {boolean} [options.showActions=true]
+ * @param {(sku: string) => Promise<object|null>} [options.fetchRating]
  */
 export function createProductCardSlots({
   routeProduct,
@@ -330,6 +336,7 @@ export function createProductCardSlots({
   onAddToCartClick,
   onWishlistClick,
   showActions = true,
+  fetchRating,
 }) {
   return {
     ProductImage: (ctx) => {
@@ -397,8 +404,27 @@ export function createProductCardSlots({
         wrap.appendChild(subtitle);
       }
 
-      const reviews = buildReviews(data, labels, productHref);
-      if (reviews) wrap.appendChild(reviews);
+      const reviewsSlot = document.createElement('div');
+      reviewsSlot.className = `${CARD}__reviews-slot`;
+      wrap.appendChild(reviewsSlot);
+
+      const renderReviewsNode = (cardData) => {
+        const reviews = buildReviews(cardData, labels, productHref);
+        reviewsSlot.innerHTML = '';
+        if (reviews) reviewsSlot.appendChild(reviews);
+      };
+
+      renderReviewsNode(data);
+
+      if (typeof fetchRating === 'function' && product.sku && (data.rating === 0 || data.rating == null)) {
+        fetchRating(product.sku).then((ratingData) => {
+          if (ratingData && (ratingData.rating > 0 || ratingData.reviewCount > 0)) {
+            data.rating = ratingData.rating;
+            data.reviewCount = ratingData.reviewCount;
+            renderReviewsNode(data);
+          }
+        }).catch(() => {});
+      }
 
       ctx.replaceWith(wrap);
     },

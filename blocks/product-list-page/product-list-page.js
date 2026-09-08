@@ -5,6 +5,7 @@ import { render as provider } from '@dropins/storefront-product-discovery/render
 import { search } from '@dropins/storefront-product-discovery/api.js';
 import { Button, Icon, provider as UI } from '@dropins/tools/components.js';
 import { tryRenderAemAssetsImage } from '@dropins/tools/lib/aem/assets.js';
+import { getConfigValue } from '@dropins/tools/lib/aem/configs.js';
 // Event Bus
 import { events } from '@dropins/tools/event-bus.js';
 import PlpSearchResults from './plp-search-results.js';
@@ -47,6 +48,40 @@ import { fetchCategoryDetails } from './category-details.js';
 
 // Initializers
 import '../../scripts/initializers/search.js';
+
+const ratingsCache = new Map();
+
+/**
+ * Fetches averageRating and reviewCount for a given SKU from product-reviews API.
+ * @param {string} sku
+ * @returns {Promise<{rating: number, reviewCount: number}|null>}
+ */
+async function fetchProductRating(sku) {
+  if (!sku) return null;
+  if (ratingsCache.has(sku)) return ratingsCache.get(sku);
+
+  const promise = (async () => {
+    try {
+      const apiBase = getConfigValue('product-reviews-api-base');
+      if (!apiBase) return null;
+      const res = await fetch(`${apiBase}/get-ratings?sku=${encodeURIComponent(sku)}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data && data.success) {
+        return {
+          rating: Number(data.averageRating) || 0,
+          reviewCount: Number(data.reviewCount) || 0,
+        };
+      }
+    } catch (err) {
+      console.warn(`Failed to fetch rating for ${sku}:`, err);
+    }
+    return null;
+  })();
+
+  ratingsCache.set(sku, promise);
+  return promise;
+}
 
 /** Default PLP card image size (matches Product Discovery SearchResults defaults). */
 const PLP_IMAGE_DIMENSIONS = {
@@ -383,6 +418,7 @@ export default async function decorate(block) {
     requiresPdpConfiguration,
     onAddToCartClick: (product, button) => cardHandlers.onAddToCartClick(product, button),
     onWishlistClick: (product, button) => cardHandlers.onWishlistClick(product, button),
+    fetchRating: fetchProductRating,
     renderProductImage: (ctx) => {
       const {
         product, defaultImageProps, replaceWith,

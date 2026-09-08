@@ -15,6 +15,15 @@ await initializeDropin(async () => {
     },
   };
 
+  const models = {
+    Product: {
+      transformer: (raw) => ({
+        averageRating: raw?.averageRating ?? 0,
+        reviewCount: raw?.reviewCount ?? 0,
+      }),
+    },
+  };
+
   // Initialize search
-  return initializers.mountImmediately(initialize, { langDefinitions });
+  return initializers.mountImmediately(initialize, { langDefinitions, models });
 })();

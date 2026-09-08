@@ -2,6 +2,14 @@ import { getConfigValue } from '@dropins/tools/lib/aem/configs.js';
 import { readBlockConfig } from '../../scripts/aem.js';
 import { fetchPlaceholders, getProductSku } from '../../scripts/commerce.js';
 
+function getPdpHeaderSku() {
+  const el = document.querySelector('.pdp-header__sku, .pdp-product__sku');
+  if (!el) return null;
+  const raw = el.textContent?.trim();
+  if (!raw) return null;
+  return raw.replace(/^SKU#?:?\s*/i, '').trim();
+}
+
 function getReviewsApiBase() {
   return getConfigValue('product-reviews-api-base');
 }
@@ -42,6 +50,8 @@ async function fetchReviews(sku) {
 }
 
 async function submitReview(payload) {
+  // eslint-disable-next-line no-console
+  console.log('Submitting review for SKU:', payload?.sku, payload);
   try {
     const response = await fetch(getCreateReviewApiUrl(), {
       method: 'POST',
@@ -143,11 +153,12 @@ export default async function decorate(block) {
   block.textContent = '';
 
   const labels = await fetchPlaceholders();
-  let sku = config.sku || getProductSku();
+  let sku = getPdpHeaderSku() || config.sku;
 
   if (!sku) {
     sku = document.querySelector('meta[name="product-sku"]')?.content
-      || document.querySelector('meta[name="sku"]')?.content;
+      || document.querySelector('meta[name="sku"]')?.content
+      || getProductSku();
   }
 
   if (!sku) {
@@ -367,8 +378,10 @@ export default async function decorate(block) {
     const titleVal = form.querySelector('[name="title"]').value.trim();
     const reviewVal = form.querySelector('[name="review"]').value.trim();
 
+    const currentSku = getPdpHeaderSku() || sku;
+
     const result = await submitReview({
-      sku,
+      sku: currentSku,
       rating: selectedRating,
       author: authorVal || 'Anonymous',
       title: titleVal,
@@ -388,7 +401,7 @@ export default async function decorate(block) {
         msgEl.textContent = '';
       }, 2500);
 
-      const freshData = await fetchReviews(sku);
+      const freshData = await fetchReviews(currentSku);
       if (freshData) {
         renderPdpHeaderReviewSummary(freshData.averageRating || 0, freshData.reviewCount || 0);
         starsEl.textContent = renderStars(freshData.averageRating);
