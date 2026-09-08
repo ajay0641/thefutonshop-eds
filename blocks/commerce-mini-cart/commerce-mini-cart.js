@@ -15,11 +15,13 @@ import createMiniPDP from '../../scripts/components/commerce-mini-pdp/commerce-m
 
 // Initializers
 import '../../scripts/initializers/cart.js';
-
 import { readBlockConfig } from '../../scripts/aem.js';
 import { fetchPlaceholders, rootLink, getProductLink } from '../../scripts/commerce.js';
 import { getCartItemImageSlotConfig } from '../../scripts/product-image.js';
-import { removeOwnedCartLineItem } from '../../scripts/cart-sync.js';
+import {
+  removeOwnedCartLineItem,
+  queueQuantityUpdate,
+} from '../../scripts/cart-sync.js';
 
 /**
  * Wraps option rows in a "See Details" accordion (TFS reference).
@@ -82,7 +84,15 @@ function createMiniCartHeader(cartURL) {
   header.append(title, actions);
 
   const updateTitle = (cart) => {
-    const qty = cart?.totalQuantity ?? 0;
+    let qty = cart?.totalQuantity;
+    if (qty == null) {
+      qty = cart?.total_quantity;
+    }
+    if (qty == null && (cart?.items || cart?.itemsV2?.items)) {
+      const items = cart?.items || cart?.itemsV2?.items || [];
+      qty = items.reduce((sum, i) => sum + (i?.quantity || 1), 0);
+    }
+    qty = qty ?? 0;
     const label = qty === 1 ? 'Item' : 'Items';
     title.textContent = `${qty} ${label} in Cart`;
   };
@@ -248,6 +258,112 @@ export default async function decorate(block) {
     slots: {
       ItemSku: (ctx) => {
         ctx.remove();
+      },
+
+      ItemQuantity: (ctx) => {
+        const {
+          item,
+          isUpdating,
+          quantityInputValue,
+        } = ctx;
+
+        const wrap = document.createElement('div');
+        wrap.className = 'mini-cart-qty';
+
+        const dec = document.createElement('button');
+        dec.type = 'button';
+        dec.className = 'mini-cart-qty__btn mini-cart-qty__btn--dec';
+        dec.setAttribute('aria-label', `Decrease quantity for ${item.name}`);
+        dec.textContent = '−';
+
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.min = '1';
+        input.className = 'mini-cart-qty__input';
+        input.value = String(quantityInputValue || item.quantity || 1);
+        input.setAttribute('aria-label', `Quantity for ${item.name}`);
+
+        const inc = document.createElement('button');
+        inc.type = 'button';
+        inc.className = 'mini-cart-qty__btn mini-cart-qty__btn--inc';
+        inc.setAttribute('aria-label', `Increase quantity for ${item.name}`);
+        inc.textContent = '+';
+
+        let isBusy = isUpdating;
+        const updateDisabledStates = () => {
+          const currentVal = Math.max(1, parseInt(input.value, 10) || 1);
+          input.disabled = isBusy;
+          inc.disabled = isBusy;
+          dec.disabled = isBusy || currentVal <= 1;
+        };
+        updateDisabledStates();
+
+        const setBusyState = (busy) => {
+          isBusy = busy;
+          updateDisabledStates();
+        };
+
+        let debounceTimer = null;
+        const triggerUpdate = (nextVal) => {
+          const val = Math.max(1, parseInt(nextVal, 10) || 1);
+          input.value = String(val);
+          updateDisabledStates();
+
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            queueQuantityUpdate(item.uid, val, setBusyState);
+          }, 300);
+        };
+
+        dec.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (isBusy) return;
+          const current = Math.max(
+            1,
+            parseInt(input.value, 10) || quantityInputValue || item.quantity || 1,
+          );
+          if (current > 1) {
+            triggerUpdate(current - 1);
+          }
+        });
+
+        inc.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (isBusy) return;
+          const current = Math.max(
+            1,
+            parseInt(input.value, 10) || quantityInputValue || item.quantity || 1,
+          );
+          triggerUpdate(current + 1);
+        });
+
+        input.addEventListener('input', () => {
+          const raw = parseInt(input.value, 10);
+          if (!Number.isNaN(raw) && raw >= 1) {
+            triggerUpdate(raw);
+          }
+        });
+
+        input.addEventListener('change', () => {
+          triggerUpdate(input.value);
+        });
+
+        input.addEventListener('blur', () => {
+          triggerUpdate(input.value);
+        });
+
+        ctx.onChange?.((next) => {
+          const nextVal = next.quantityInputValue ?? next.item?.quantity ?? 1;
+          if (!isBusy) {
+            input.value = String(nextVal);
+            updateDisabledStates();
+          }
+        });
+
+        wrap.append(dec, input, inc);
+        ctx.replaceWith(wrap);
       },
 
       Thumbnail: (ctx) => {

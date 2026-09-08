@@ -41,6 +41,244 @@ function sanitizeName(name) {
 // Core Fetch GraphQL Instance
 export const CORE_FETCH_GRAPHQL = new FetchGraphQL();
 
+/**
+ * Adobe Commerce SaaS core_saas service returns an internal server error when
+ * `price_range` is requested on items in itemsV2, turning cart items into null.
+ * Stripping `price_range` from itemsV2 queries prevents null items and blank cart UI.
+ * @param {string} queryStr
+ * @returns {string}
+ */
+function removePriceRangeFromItemsQuery(queryStr) {
+  if (typeof queryStr !== 'string' || !queryStr.includes('itemsV2')) return queryStr;
+  let result = queryStr;
+  while (result.includes('price_range')) {
+    const match = /price_range\s*\{/.exec(result);
+    if (!match) break;
+    const startIdx = match.index;
+    const braceIdx = result.indexOf('{', startIdx);
+    let depth = 0;
+    let endIdx = -1;
+    for (let i = braceIdx; i < result.length; i += 1) {
+      if (result[i] === '{') depth += 1;
+      else if (result[i] === '}') {
+        depth -= 1;
+        if (depth === 0) {
+          endIdx = i + 1;
+          break;
+        }
+      }
+    }
+    if (startIdx !== -1 && endIdx !== -1) {
+      result = result.slice(0, startIdx) + result.slice(endIdx);
+    } else {
+      break;
+    }
+  }
+
+  // Remove unused fragment definitions (e.g. fragment PRICE_RANGE_FRAGMENT)
+  const fragmentMatches = Array.from(
+    result.matchAll(/fragment\s+([A-Za-z0-9_]+)\s+on\s+[A-Za-z0-9_]+\s*\{/g),
+  );
+  fragmentMatches.forEach((match) => {
+    const fragName = match[1];
+    const defIndex = match.index;
+    const beforeDef = result.slice(0, defIndex);
+    if (!beforeDef.includes(`...${fragName}`) && !beforeDef.includes(`... ${fragName}`)) {
+      const braceIdx = result.indexOf('{', defIndex);
+      let depth = 0;
+      let endIdx = -1;
+      for (let i = braceIdx; i < result.length; i += 1) {
+        if (result[i] === '{') depth += 1;
+        else if (result[i] === '}') {
+          depth -= 1;
+          if (depth === 0) {
+            endIdx = i + 1;
+            break;
+          }
+        }
+      }
+      if (endIdx !== -1) {
+        result = result.slice(0, defIndex) + result.slice(endIdx);
+      }
+    }
+  });
+
+  return result;
+}
+
+// Automatically attach Authorization header for authenticated users
+CORE_FETCH_GRAPHQL.addBeforeHook((requestOptions) => {
+  const token = getCookie('auth_dropin_user_token');
+  if (token) {
+    CORE_FETCH_GRAPHQL.setFetchGraphQlHeader('Authorization', `Bearer ${token}`);
+  }
+
+  if (requestOptions?.body && typeof requestOptions.body === 'string') {
+    try {
+      const parsed = JSON.parse(requestOptions.body);
+      if (parsed.query && parsed.query.includes('itemsV2') && parsed.query.includes('price_range')) {
+        parsed.query = removePriceRangeFromItemsQuery(parsed.query);
+        requestOptions.body = JSON.stringify(parsed);
+      }
+    } catch (e) {
+      // Ignore non-JSON bodies
+    }
+  }
+
+  return requestOptions;
+});
+
+// Filter non-fatal partial SaaS GraphQL errors and null items when a valid cart payload
+// is returned, preventing drop-in error handler from throwing Internal server error
+// or TypeError and blanking checkout.
+CORE_FETCH_GRAPHQL.addAfterHook((requestOptions, response) => {
+  if (!response) return response;
+
+  const sanitizeCartObj = (cart) => {
+    if (!cart) return;
+
+    if (cart.prices) {
+      const items = cart.itemsV2?.items || [];
+      const totalVal = items.reduce(
+        (sum, item) => sum + (item?.prices?.row_total?.value || 0),
+        0,
+      );
+      const currency = items[0]?.prices?.row_total?.currency || 'USD';
+
+      if (!cart.prices.grand_total) {
+        cart.prices.grand_total = { value: totalVal, currency };
+      }
+      if (!cart.prices.grand_total_excluding_tax) {
+        cart.prices.grand_total_excluding_tax = { value: totalVal, currency };
+      }
+      if (!cart.prices.subtotal_excluding_tax) {
+        cart.prices.subtotal_excluding_tax = { value: totalVal, currency };
+      }
+      if (!cart.prices.subtotal_including_tax) {
+        cart.prices.subtotal_including_tax = { value: totalVal, currency };
+      }
+      if (!cart.prices.subtotal_with_discount_excluding_tax) {
+        cart.prices.subtotal_with_discount_excluding_tax = { value: totalVal, currency };
+      }
+      if (!cart.prices.discounts) {
+        cart.prices.discounts = [];
+      }
+      if (!cart.prices.applied_taxes) {
+        cart.prices.applied_taxes = [];
+      }
+    }
+
+    if (cart.itemsV2 && Array.isArray(cart.itemsV2.items)) {
+      cart.itemsV2.items = cart.itemsV2.items.filter(Boolean);
+      const computedTotalQty = cart.itemsV2.items.reduce(
+        (sum, item) => sum + (item?.quantity || 1),
+        0,
+      );
+      cart.total_quantity = computedTotalQty;
+      cart.totalQuantity = computedTotalQty;
+      cart.itemsV2.items.forEach((item) => {
+        if (!item) return;
+        const unitPrice = item.prices?.price || (
+          item.prices?.row_total?.value != null && item.quantity > 0
+            ? {
+              value: item.prices.row_total.value / item.quantity,
+              currency: item.prices.row_total.currency || 'USD',
+            }
+            : null
+        );
+
+        if (unitPrice) {
+          if (!item.prices) item.prices = {};
+          if (!item.prices.price) item.prices.price = unitPrice;
+          if (!item.prices.price_including_tax) item.prices.price_including_tax = unitPrice;
+          if (!item.prices.original_item_price) item.prices.original_item_price = unitPrice;
+          if (!item.prices.row_total) {
+            item.prices.row_total = {
+              value: unitPrice.value * (item.quantity || 1),
+              currency: unitPrice.currency || 'USD',
+            };
+          }
+          if (!item.prices.row_total_including_tax) {
+            item.prices.row_total_including_tax = item.prices.row_total;
+          }
+          if (!item.prices.original_row_total) {
+            item.prices.original_row_total = item.prices.row_total;
+          }
+          if (!item.prices.total_item_discount) {
+            item.prices.total_item_discount = { value: 0, currency: unitPrice.currency || 'USD' };
+          }
+
+          const defaultPriceRange = {
+            minimum_price: {
+              final_price: { value: unitPrice.value, currency: unitPrice.currency || 'USD' },
+              regular_price: { value: unitPrice.value, currency: unitPrice.currency || 'USD' },
+              discount: { amount_off: 0, percent_off: 0 },
+            },
+            maximum_price: {
+              final_price: { value: unitPrice.value, currency: unitPrice.currency || 'USD' },
+              regular_price: { value: unitPrice.value, currency: unitPrice.currency || 'USD' },
+              discount: { amount_off: 0, percent_off: 0 },
+            },
+          };
+
+          if (!item.product) item.product = {};
+          if (!item.product.price_range) {
+            item.product.price_range = defaultPriceRange;
+          }
+
+          if (item.__typename === 'ConfigurableCartItem' || item.configured_variant) {
+            if (!item.configured_variant) item.configured_variant = {};
+            if (!item.configured_variant.price_range) {
+              item.configured_variant.price_range = defaultPriceRange;
+            }
+          }
+        }
+
+        const fixPriceRangeDiscounts = (pr) => {
+          if (!pr) return;
+          if (pr.minimum_price && !pr.minimum_price.discount) {
+            pr.minimum_price.discount = { amount_off: 0, percent_off: 0 };
+          }
+          if (pr.maximum_price && !pr.maximum_price.discount) {
+            pr.maximum_price.discount = { amount_off: 0, percent_off: 0 };
+          }
+        };
+
+        fixPriceRangeDiscounts(item.product?.price_range);
+        fixPriceRangeDiscounts(item.configured_variant?.price_range);
+      });
+    }
+  };
+
+  if (response.data) {
+    sanitizeCartObj(response.data.cart);
+    sanitizeCartObj(response.data.customerCart);
+    sanitizeCartObj(response.data.addProductsToCart?.cart);
+    sanitizeCartObj(response.data.updateCartItems?.cart);
+    sanitizeCartObj(response.data.mergeCarts);
+  }
+
+  const hasCartData = Boolean(
+    response?.data?.cart
+    || response?.data?.customerCart
+    || response?.data?.addProductsToCart?.cart
+    || response?.data?.updateCartItems?.cart
+    || response?.data?.mergeCarts,
+  );
+
+  if (hasCartData && Array.isArray(response.errors) && response.errors.length > 0) {
+    const hasCriticalAuthOrEntityError = response.errors.some((err) => {
+      const category = err?.extensions?.category;
+      return category === 'graphql-authorization' || category === 'graphql-no-such-entity';
+    });
+    if (!hasCriticalAuthOrEntityError) {
+      return { ...response, errors: undefined };
+    }
+  }
+
+  return response;
+});
+
 // Catalog Service Fetch GraphQL Instance
 export const CS_FETCH_GRAPHQL = new FetchGraphQL();
 

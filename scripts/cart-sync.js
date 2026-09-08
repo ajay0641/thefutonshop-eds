@@ -1,6 +1,9 @@
 import { getCookie } from '@dropins/tools/lib.js';
 import { events } from '@dropins/tools/event-bus.js';
 import * as Cart from '@dropins/storefront-cart/api.js';
+import * as Checkout from '@dropins/storefront-checkout/api.js';
+import * as Account from '@dropins/storefront-account/api.js';
+import * as Order from '@dropins/storefront-order/api.js';
 import { CORE_FETCH_GRAPHQL } from './commerce.js';
 
 /**
@@ -33,11 +36,18 @@ export function getAuthToken() {
 export function syncCartAuthHeaders(isAuthenticated) {
   const token = getAuthToken();
   if (isAuthenticated && token) {
-    CORE_FETCH_GRAPHQL.setFetchGraphQlHeader('Authorization', `Bearer ${token}`);
-    Cart.setFetchGraphQlHeader?.('Authorization', `Bearer ${token}`);
+    const bearer = `Bearer ${token}`;
+    CORE_FETCH_GRAPHQL.setFetchGraphQlHeader('Authorization', bearer);
+    Cart.setFetchGraphQlHeader?.('Authorization', bearer);
+    Checkout.setFetchGraphQlHeader?.('Authorization', bearer);
+    Account.setFetchGraphQlHeader?.('Authorization', bearer);
+    Order.setFetchGraphQlHeader?.('Authorization', bearer);
   } else {
     CORE_FETCH_GRAPHQL.removeFetchGraphQlHeader('Authorization');
     Cart.removeFetchGraphQlHeader?.('Authorization');
+    Checkout.removeFetchGraphQlHeader?.('Authorization');
+    Account.removeFetchGraphQlHeader?.('Authorization');
+    Order.removeFetchGraphQlHeader?.('Authorization');
   }
 }
 
@@ -78,47 +88,73 @@ export function resolveCartItemUid(item, cart) {
   return match?.uid || item.uid;
 }
 
+let ownedCartPromise = null;
+
 /**
  * Loads the cart owned by the current user and persists its id for mutations.
- * Logged-in: drop guest cart-id first so refresh uses customerCart only.
- * A guest id + Bearer token causes ownership errors and checkout sync loops.
+ * Deduplicates in-flight calls to prevent redundant CUSTOMER_CART_QUERY calls.
+ * @param {boolean} [forceRefresh=false]
  * @returns {Promise<object|null>}
  */
-export async function ensureOwnedCart() {
-  const isAuth = restoreCartAuthState();
-
-  if (isAuth) {
-    clearStoredCartId();
-    restoreCartAuthState();
+export async function ensureOwnedCart(forceRefresh = false) {
+  if (ownedCartPromise && !forceRefresh) {
+    return ownedCartPromise;
   }
 
-  try {
-    const cart = await Cart.refreshCart();
-    if (cart?.id) {
-      Cart.s.cartId = cart.id;
-      events.emit('cart/data', cart);
-      return cart;
-    }
-  } catch (error) {
-    console.error('Failed to refresh cart:', error);
-  }
+  ownedCartPromise = (async () => {
+    const isAuth = restoreCartAuthState();
 
-  if (isAuth) {
-    restoreCartAuthState();
-    try {
-      const customerCart = await Cart.getCartData();
-      if (customerCart?.id) {
-        Cart.s.cartId = customerCart.id;
-        events.emit('cart/data', customerCart);
-        return customerCart;
+    // Return cached cart model only if valid and matches auth status
+    // (do not return cached guest cart for logged-in user)
+    const cached = Cart.getCartDataFromCache();
+    if (cached?.id && !forceRefresh) {
+      const isCachedGuest = cached.isGuestCart === true;
+      if (!isAuth || !isCachedGuest) {
+        if (Cart.s && Cart.s.cartId !== cached.id) {
+          Cart.s.cartId = cached.id;
+        }
+        return cached;
       }
-    } catch (error) {
-      console.error('Failed to load customer cart:', error);
+    }
+
+    if (isAuth && cached?.isGuestCart) {
+      clearStoredCartId();
+      if (Cart.s) Cart.s.cartId = null;
       restoreCartAuthState();
     }
-  }
 
-  return Cart.getCartDataFromCache();
+    try {
+      const cart = await Cart.refreshCart();
+      if (cart?.id) {
+        if (Cart.s) Cart.s.cartId = cart.id;
+        events.emit('cart/data', cart);
+        return cart;
+      }
+    } catch (error) {
+      console.warn('Cart refresh/merge failed, clearing invalid guest cart:', error?.message || error);
+      if (isAuth) {
+        clearStoredCartId();
+        if (Cart.s) Cart.s.cartId = null;
+        restoreCartAuthState();
+        try {
+          const freshCart = await Cart.getCartData();
+          if (freshCart?.id) {
+            if (Cart.s) Cart.s.cartId = freshCart.id;
+            events.emit('cart/data', freshCart);
+            return freshCart;
+          }
+        } catch (freshErr) {
+          console.error('Failed to fetch customer cart after clear:', freshErr?.message || freshErr);
+        }
+      }
+    }
+
+    return Cart.getCartDataFromCache();
+  })().finally(() => {
+    ownedCartPromise = null;
+  });
+
+  return ownedCartPromise;
 }
 
 /**
@@ -190,9 +226,75 @@ export async function removeOwnedCartLineItem(item) {
   }
 
   // Re-load full cart model into UI (mutation response is minimal)
-  const next = await ensureOwnedCart();
-  if (!next) {
+  const next = await ensureOwnedCart(true);
+  if (next) {
+    events.emit('cart/data', next);
+    events.emit('cart/updated', next);
+  } else {
     events.emit('cart/data', null);
   }
   return next;
+}
+
+const pendingQuantityUpdates = new Map();
+
+/**
+ * Queues and executes item quantity updates sequentially to prevent
+ * GraphQL race conditions and ensure accurate server price recalculation.
+ * @param {string} uid
+ * @param {number} targetQty
+ * @param {Function} [onStateChange]
+ * @returns {Promise<object|null>}
+ */
+export function queueQuantityUpdate(uid, targetQty, onStateChange) {
+  let state = pendingQuantityUpdates.get(uid);
+  if (!state) {
+    state = { targetQty, inFlight: false, promise: Promise.resolve() };
+    pendingQuantityUpdates.set(uid, state);
+  }
+  state.targetQty = targetQty;
+
+  if (state.inFlight) {
+    return state.promise;
+  }
+
+  state.inFlight = true;
+  if (onStateChange) onStateChange(true);
+
+  state.promise = (async () => {
+    try {
+      while (state.targetQty !== null) {
+        const qtyToSend = state.targetQty;
+        state.targetQty = null;
+        // eslint-disable-next-line no-await-in-loop
+        await ensureOwnedCart();
+        // eslint-disable-next-line no-await-in-loop
+        const updatedCart = await Cart.updateProductsFromCart([{ uid, quantity: qtyToSend }]);
+        if (updatedCart && Array.isArray(updatedCart.items) && updatedCart.items.length > 0) {
+          events.emit('cart/data', updatedCart);
+          events.emit('cart/updated', updatedCart);
+        } else {
+          // eslint-disable-next-line no-await-in-loop
+          const freshCart = await ensureOwnedCart(true);
+          if (freshCart) {
+            events.emit('cart/data', freshCart);
+            events.emit('cart/updated', freshCart);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update cart quantity:', err);
+      const freshCart = await ensureOwnedCart(true).catch(() => null);
+      if (freshCart) {
+        events.emit('cart/data', freshCart);
+        events.emit('cart/updated', freshCart);
+      }
+    } finally {
+      state.inFlight = false;
+      pendingQuantityUpdates.delete(uid);
+      if (onStateChange) onStateChange(false);
+    }
+  })();
+
+  return state.promise;
 }
